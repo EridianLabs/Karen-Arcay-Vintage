@@ -7,6 +7,9 @@ import { FAQSection } from "@/components/FAQSection";
 import { ReviewsCarousel } from "@/components/ReviewsCarousel";
 import { prisma } from "@/lib/db";
 
+// Avoid prerender at build time so Prisma runs only at request time (Vercel serverless)
+export const dynamic = "force-dynamic";
+
 async function getSaleProducts() {
   const products = await prisma.product.findMany({
     where: { published: true, salePrice: { not: null } },

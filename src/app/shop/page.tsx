@@ -2,6 +2,8 @@ import { ProductCard } from "@/components/ProductCard";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 type SearchParams = { category?: string; sale?: string; page?: string };
 
 async function getProducts(searchParams: SearchParams) {
