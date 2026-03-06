@@ -3,13 +3,21 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
   fetchStoreItemIds,
-  fetchItemDetails,
+  fetchItemDetailsBatch,
   type EbaySyncResult,
 } from "@/lib/ebay";
+
+/** Allow up to 5 minutes for sync (Vercel Pro supports 300s; Hobby 10s). */
+export const maxDuration = 300;
 
 /** Only products from this eBay seller are allowed on the site. Seller username: sindypink */
 const ALLOWED_EBAY_SELLER = "sindypink";
 const DEFAULT_STORE_NAME = ALLOWED_EBAY_SELLER;
+
+/** Max items to process per sync run to stay under Vercel/serverless timeout. Run sync again to get more. */
+const MAX_ITEMS_PER_RUN = 200;
+const BATCH_SIZE = 20;
+const DELAY_BETWEEN_BATCHES_MS = 200;
 
 function mapEbayCategoryToOurs(ebayCategoryName: string | undefined): string | null {
   if (!ebayCategoryName) return null;
@@ -23,6 +31,136 @@ function mapEbayCategoryToOurs(ebayCategoryName: string | undefined): string | n
   return null;
 }
 
+function streamSyncResponse(
+  appId: string,
+  clientSecret: string,
+  sellerUsername: string,
+  limit: number
+): Response {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      const emit = (obj: object) => {
+        controller.enqueue(encoder.encode(JSON.stringify(obj) + "\n"));
+      };
+      const result: EbaySyncResult = { created: 0, updated: 0, failed: 0, totalFetched: 0, errors: [] };
+      try {
+        emit({ type: "log", ts: Date.now(), message: "Fetching item IDs from eBay (seller filter)…" });
+        const { itemIds: allItemIds, errors: idErrors } = await fetchStoreItemIds(
+          appId,
+          clientSecret,
+          sellerUsername
+        );
+        result.errors.push(...idErrors);
+        const itemIds = allItemIds.slice(0, limit);
+        result.totalFetched = itemIds.length;
+        emit({ type: "log", ts: Date.now(), message: `Fetched ${itemIds.length} item IDs (limit ${limit}).` });
+        if (idErrors.length > 0) {
+          idErrors.slice(0, 3).forEach((e) => emit({ type: "log", ts: Date.now(), message: `  ⚠ ${e}` }));
+        }
+
+        if (itemIds.length === 0) {
+          emit({ type: "result", ...result });
+          controller.close();
+          return;
+        }
+
+        const { prisma } = await import("@/lib/db");
+        const categories = await prisma.category.findMany();
+        const slugToCategoryId = new Map(categories.map((c) => [c.slug, c.id]));
+        const allowedSeller = (sellerUsername || ALLOWED_EBAY_SELLER).toLowerCase();
+        const totalBatches = Math.ceil(itemIds.length / BATCH_SIZE);
+
+        for (let offset = 0; offset < itemIds.length; offset += BATCH_SIZE) {
+          const batchIndex = Math.floor(offset / BATCH_SIZE) + 1;
+          const batch = itemIds.slice(offset, offset + BATCH_SIZE);
+          emit({ type: "log", ts: Date.now(), message: `Fetching batch ${batchIndex}/${totalBatches} (${batch.length} items)…` });
+          const detailsMap = await fetchItemDetailsBatch(appId, clientSecret, batch);
+          if (offset + BATCH_SIZE < itemIds.length) {
+            await new Promise((r) => setTimeout(r, DELAY_BETWEEN_BATCHES_MS));
+          }
+
+          let batchCreated = 0;
+          let batchUpdated = 0;
+          let batchFailed = 0;
+          for (const itemId of batch) {
+            const details = detailsMap.get(itemId);
+            if (!details) {
+              result.failed++;
+              batchFailed++;
+              continue;
+            }
+            result.errors.push(...details.errors);
+            const itemSeller = (details.sellerUsername ?? "").toLowerCase();
+            if (itemSeller !== allowedSeller) {
+              result.failed++;
+              batchFailed++;
+              continue;
+            }
+            if (!details.title || details.price == null || !details.viewItemURL) {
+              result.failed++;
+              batchFailed++;
+              continue;
+            }
+            const slug = mapEbayCategoryToOurs(details.primaryCategoryName);
+            const categoryId = slug ? slugToCategoryId.get(slug) ?? null : null;
+            const existing = await prisma.product.findUnique({ where: { ebayItemId: itemId } });
+            const payload = {
+              title: details.title,
+              description: details.description ?? details.title,
+              price: details.price,
+              salePrice: null as number | null,
+              categoryId,
+              images: JSON.stringify(details.imageUrls?.length ? details.imageUrls : []),
+              condition: details.condition ?? null,
+              size: null as string | null,
+              published: true,
+              ebayItemId: itemId,
+              ebayUrl: details.viewItemURL,
+            };
+            if (existing) {
+              await prisma.product.update({ where: { id: existing.id }, data: payload });
+              result.updated++;
+              batchUpdated++;
+            } else {
+              await prisma.product.create({ data: payload });
+              result.created++;
+              batchCreated++;
+            }
+          }
+          emit({
+            type: "log",
+            ts: Date.now(),
+            message: `  Batch ${batchIndex}: ${batchCreated} created, ${batchUpdated} updated, ${batchFailed} failed`,
+          });
+        }
+
+        emit({ type: "log", ts: Date.now(), message: "Sync complete." });
+        emit({ type: "result", ...result });
+      } catch (err) {
+        emit({
+          type: "result",
+          created: 0,
+          updated: 0,
+          failed: 0,
+          totalFetched: 0,
+          errors: [err instanceof Error ? err.message : String(err)],
+        });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "application/x-ndjson",
+      "Cache-Control": "no-store",
+      "X-Accel-Buffering": "no",
+    },
+  });
+}
+
 export async function POST(req: Request) {
   try {
     await requireAdmin();
@@ -33,10 +171,14 @@ export async function POST(req: Request) {
   const appId = process.env.EBAY_APP_ID;
   const clientSecret = process.env.EBAY_CLIENT_SECRET;
   let sellerUsername = process.env.EBAY_STORE_NAME || process.env.EBAY_SELLER_USERNAME || DEFAULT_STORE_NAME;
+  let limit = MAX_ITEMS_PER_RUN;
+  let stream = false;
   try {
     const body = await req.json().catch(() => ({}));
     if (body?.storeName) sellerUsername = body.storeName;
     if (body?.sellerUsername) sellerUsername = body.sellerUsername;
+    if (typeof body?.limit === "number" && body.limit > 0) limit = Math.min(500, body.limit);
+    if (body?.stream === true) stream = true;
   } catch {
     // leave as env or default
   }
@@ -51,14 +193,19 @@ export async function POST(req: Request) {
     );
   }
 
+  if (stream) {
+    return streamSyncResponse(appId, clientSecret, sellerUsername, limit);
+  }
+
   const result: EbaySyncResult = { created: 0, updated: 0, failed: 0, totalFetched: 0, errors: [] };
 
-  const { itemIds, errors: idErrors } = await fetchStoreItemIds(
+  const { itemIds: allItemIds, errors: idErrors } = await fetchStoreItemIds(
     appId,
     clientSecret,
     sellerUsername
   );
   result.errors.push(...idErrors);
+  const itemIds = allItemIds.slice(0, limit);
   result.totalFetched = itemIds.length;
 
   if (itemIds.length === 0 && idErrors.length > 0) {
@@ -68,58 +215,65 @@ export async function POST(req: Request) {
   const categories = await prisma.category.findMany();
   const slugToCategoryId = new Map(categories.map((c) => [c.slug, c.id]));
 
-  for (let i = 0; i < itemIds.length; i++) {
-    const itemId = itemIds[i];
-    const details = await fetchItemDetails(appId, clientSecret, itemId);
-    result.errors.push(...details.errors);
+  const allowedSeller = (sellerUsername || ALLOWED_EBAY_SELLER).toLowerCase();
 
-    const itemSeller = (details.sellerUsername ?? "").toLowerCase();
-    const allowedSeller = (sellerUsername || ALLOWED_EBAY_SELLER).toLowerCase();
-    if (itemSeller !== allowedSeller) {
-      result.failed++;
-      continue;
+  for (let offset = 0; offset < itemIds.length; offset += BATCH_SIZE) {
+    const batch = itemIds.slice(offset, offset + BATCH_SIZE);
+    const detailsMap = await fetchItemDetailsBatch(appId, clientSecret, batch);
+    if (offset + BATCH_SIZE < itemIds.length) {
+      await new Promise((r) => setTimeout(r, DELAY_BETWEEN_BATCHES_MS));
     }
 
-    if (!details.title || details.price == null || !details.viewItemURL) {
-      result.failed++;
-      continue;
-    }
+    for (const itemId of batch) {
+      const details = detailsMap.get(itemId);
+      if (!details) {
+        result.failed++;
+        continue;
+      }
+      result.errors.push(...details.errors);
 
-    const slug = mapEbayCategoryToOurs(details.primaryCategoryName);
-    const categoryId = slug ? slugToCategoryId.get(slug) ?? null : null;
+      const itemSeller = (details.sellerUsername ?? "").toLowerCase();
+      if (itemSeller !== allowedSeller) {
+        result.failed++;
+        continue;
+      }
 
-    const existing = await prisma.product.findUnique({
-      where: { ebayItemId: itemId },
-    });
+      if (!details.title || details.price == null || !details.viewItemURL) {
+        result.failed++;
+        continue;
+      }
 
-    const payload = {
-      title: details.title,
-      description: details.description ?? details.title,
-      price: details.price,
-      salePrice: null as number | null,
-      categoryId,
-      images: JSON.stringify(details.imageUrls?.length ? details.imageUrls : []),
-      condition: details.condition ?? null,
-      size: null as string | null,
-      published: true,
-      ebayItemId: itemId,
-      ebayUrl: details.viewItemURL,
-    };
+      const slug = mapEbayCategoryToOurs(details.primaryCategoryName);
+      const categoryId = slug ? slugToCategoryId.get(slug) ?? null : null;
 
-    if (existing) {
-      await prisma.product.update({
-        where: { id: existing.id },
-        data: payload,
+      const existing = await prisma.product.findUnique({
+        where: { ebayItemId: itemId },
       });
-      result.updated++;
-    } else {
-      await prisma.product.create({ data: payload });
-      result.created++;
-    }
 
-    // Rate limit: ~5000 calls/day for Shopping API – throttle to ~1 per 0.2s
-    if (i < itemIds.length - 1) {
-      await new Promise((r) => setTimeout(r, 250));
+      const payload = {
+        title: details.title,
+        description: details.description ?? details.title,
+        price: details.price,
+        salePrice: null as number | null,
+        categoryId,
+        images: JSON.stringify(details.imageUrls?.length ? details.imageUrls : []),
+        condition: details.condition ?? null,
+        size: null as string | null,
+        published: true,
+        ebayItemId: itemId,
+        ebayUrl: details.viewItemURL,
+      };
+
+      if (existing) {
+        await prisma.product.update({
+          where: { id: existing.id },
+          data: payload,
+        });
+        result.updated++;
+      } else {
+        await prisma.product.create({ data: payload });
+        result.created++;
+      }
     }
   }
 

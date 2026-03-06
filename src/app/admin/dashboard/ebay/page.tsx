@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 
 type SyncResult = {
   created: number;
@@ -10,22 +10,31 @@ type SyncResult = {
   errors: string[];
 };
 
+type LogEntry = { ts: number; message: string };
+
 export default function AdminEbayPage() {
   const [syncing, setSyncing] = useState(false);
   const [result, setResult] = useState<SyncResult | null>(null);
   const [storeName, setStoreName] = useState("sindypink");
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const consoleEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (logs.length) consoleEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [logs.length]);
 
   const handleSync = async () => {
     setSyncing(true);
     setResult(null);
+    setLogs([]);
     try {
       const res = await fetch("/api/admin/ebay/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storeName }),
+        body: JSON.stringify({ storeName, stream: true }),
       });
-      const data = await res.json();
       if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
         setResult({
           created: 0,
           updated: 0,
@@ -35,8 +44,66 @@ export default function AdminEbayPage() {
         });
         return;
       }
-      setResult(data);
+      const reader = res.body?.getReader();
+      if (!reader) {
+        setResult({
+          created: 0,
+          updated: 0,
+          failed: 0,
+          totalFetched: 0,
+          errors: ["No response body"],
+        });
+        return;
+      }
+      const dec = new TextDecoder();
+      let buf = "";
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop() ?? "";
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          try {
+            const data = JSON.parse(trimmed) as { type: string; ts?: number; message?: string } & SyncResult;
+            if (data.type === "log" && data.message != null) {
+              setLogs((prev) => [...prev, { ts: data.ts ?? Date.now(), message: data.message! }]);
+            } else if (data.type === "result") {
+              setResult({
+                created: data.created ?? 0,
+                updated: data.updated ?? 0,
+                failed: data.failed ?? 0,
+                totalFetched: data.totalFetched ?? 0,
+                errors: data.errors ?? [],
+              });
+            }
+          } catch {
+            // ignore malformed lines
+          }
+        }
+      }
+      if (buf.trim()) {
+        try {
+          const data = JSON.parse(buf.trim()) as { type: string; message?: string } & SyncResult;
+          if (data.type === "log" && data.message != null) {
+            setLogs((prev) => [...prev, { ts: Date.now(), message: data.message! }]);
+          } else if (data.type === "result") {
+            setResult({
+              created: data.created ?? 0,
+              updated: data.updated ?? 0,
+              failed: data.failed ?? 0,
+              totalFetched: data.totalFetched ?? 0,
+              errors: data.errors ?? [],
+            });
+          }
+        } catch {
+          // ignore
+        }
+      }
     } catch (e) {
+      setLogs((prev) => [...prev, { ts: Date.now(), message: `Error: ${e instanceof Error ? e.message : "Network error"}` }]);
       setResult({
         created: 0,
         updated: 0,
@@ -103,6 +170,30 @@ export default function AdminEbayPage() {
         >
           {syncing ? "Syncing…" : "Sync from eBay"}
         </button>
+
+        {(syncing || logs.length > 0) && (
+          <div className="mt-6">
+            <h3 className="mb-2 font-medium text-zinc-700">Sync console</h3>
+            <div
+              className="max-h-64 overflow-y-auto rounded border border-zinc-300 bg-zinc-900 px-4 py-3 font-mono text-sm text-zinc-100"
+              role="log"
+              aria-live="polite"
+            >
+              {logs.map((entry, i) => (
+                <div key={i} className="whitespace-pre-wrap break-words">
+                  <span className="select-none text-zinc-500">
+                    {new Date(entry.ts).toLocaleTimeString("en-GB", { hour12: false })}
+                  </span>{" "}
+                  {entry.message}
+                </div>
+              ))}
+              {syncing && logs.length === 0 && (
+                <div className="text-zinc-500">Connecting…</div>
+              )}
+              <div ref={consoleEndRef} />
+            </div>
+          </div>
+        )}
       </div>
 
       {result && (
