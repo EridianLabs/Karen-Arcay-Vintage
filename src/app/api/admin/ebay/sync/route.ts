@@ -19,11 +19,11 @@ const MAX_ITEMS_PER_RUN = 200;
 const BATCH_SIZE = 20;
 const DELAY_BETWEEN_BATCHES_MS = 200;
 
-/** Map eBay Browse API primaryItemCategory.categoryName to our Category slugs (see supabase-schema.sql). */
+/** Map eBay category to our Category slugs. Uses item.categoryPath (e.g. "Clothing|Women|Dresses") or primaryItemCategory.categoryName; any segment can match. */
 function mapEbayCategoryToOurs(ebayCategoryName: string | undefined): string | null {
   if (!ebayCategoryName) return null;
   const n = ebayCategoryName.toLowerCase();
-  // More specific matches first
+  // More specific matches first (full path is checked so "Men's Shoes" or "Men|Shoes" both match)
   if (n.includes("lingerie")) return "vintage-lingerie";
   if (n.includes("shoes") || n.includes("boots")) return "shoes-boots";
   if (n.includes("dress")) return "dresses";
@@ -56,7 +56,8 @@ function streamSyncResponse(
   appId: string,
   clientSecret: string,
   sellerUsername: string,
-  limit: number
+  limit: number,
+  skipExisting: boolean
 ): Response {
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -73,9 +74,26 @@ function streamSyncResponse(
           sellerUsername
         );
         result.errors.push(...idErrors);
-        const itemIds = allItemIds.slice(0, limit);
+        let itemIds: string[];
+        if (skipExisting && allItemIds.length > 0) {
+          const { prisma } = await import("@/lib/db");
+          const existing = await prisma.product.findMany({
+            where: { ebayItemId: { in: allItemIds } },
+            select: { ebayItemId: true },
+          });
+          const existingSet = new Set((existing.map((p) => p.ebayItemId)).filter(Boolean));
+          itemIds = allItemIds.filter((id) => !existingSet.has(id)).slice(0, limit);
+          const alreadyCount = allItemIds.length - itemIds.length;
+          emit({
+            type: "log",
+            ts: Date.now(),
+            message: `Fetched ${allItemIds.length} from eBay; ${alreadyCount} already on site. Syncing ${itemIds.length} new (limit ${limit}).`,
+          });
+        } else {
+          itemIds = allItemIds.slice(0, limit);
+          emit({ type: "log", ts: Date.now(), message: `Fetched ${itemIds.length} item IDs (limit ${limit}).` });
+        }
         result.totalFetched = itemIds.length;
-        emit({ type: "log", ts: Date.now(), message: `Fetched ${itemIds.length} item IDs (limit ${limit}).` });
         if (idErrors.length > 0) {
           idErrors.slice(0, 3).forEach((e) => emit({ type: "log", ts: Date.now(), message: `  ⚠ ${e}` }));
         }
@@ -194,12 +212,14 @@ export async function POST(req: Request) {
   let sellerUsername = process.env.EBAY_STORE_NAME || process.env.EBAY_SELLER_USERNAME || DEFAULT_STORE_NAME;
   let limit = MAX_ITEMS_PER_RUN;
   let stream = false;
+  let skipExisting = true;
   try {
     const body = await req.json().catch(() => ({}));
     if (body?.storeName) sellerUsername = body.storeName;
     if (body?.sellerUsername) sellerUsername = body.sellerUsername;
     if (typeof body?.limit === "number" && body.limit > 0) limit = Math.min(500, body.limit);
     if (body?.stream === true) stream = true;
+    if (typeof body?.skipExisting === "boolean") skipExisting = body.skipExisting;
   } catch {
     // leave as env or default
   }
@@ -215,7 +235,7 @@ export async function POST(req: Request) {
   }
 
   if (stream) {
-    return streamSyncResponse(appId, clientSecret, sellerUsername, limit);
+    return streamSyncResponse(appId, clientSecret, sellerUsername, limit, skipExisting);
   }
 
   const result: EbaySyncResult = { created: 0, updated: 0, failed: 0, totalFetched: 0, errors: [] };
@@ -226,7 +246,17 @@ export async function POST(req: Request) {
     sellerUsername
   );
   result.errors.push(...idErrors);
-  const itemIds = allItemIds.slice(0, limit);
+  let itemIds: string[];
+  if (skipExisting && allItemIds.length > 0) {
+    const existing = await prisma.product.findMany({
+      where: { ebayItemId: { in: allItemIds } },
+      select: { ebayItemId: true },
+    });
+    const existingSet = new Set((existing.map((p) => p.ebayItemId)).filter(Boolean));
+    itemIds = allItemIds.filter((id) => !existingSet.has(id)).slice(0, limit);
+  } else {
+    itemIds = allItemIds.slice(0, limit);
+  }
   result.totalFetched = itemIds.length;
 
   if (itemIds.length === 0 && idErrors.length > 0) {

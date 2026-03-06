@@ -158,9 +158,10 @@ export default function AdminEbayPage() {
       <div className="mt-8 rounded-lg border border-zinc-200 bg-white p-6">
         <h2 className="font-semibold">Sync now</h2>
         <p className="mt-2 text-sm text-zinc-600">
-          Fetches all current listings from the eBay store and creates or updates
-          products. New items get a product page; existing items are updated (price,
-          images, description). Run this after adding new listings on eBay.
+          Fetches current listings from the eBay store and creates or updates
+          products. Each run syncs up to 200 items that aren&apos;t on the site yet.
+          If she has more listings (e.g. 400+), click &ldquo;Sync from eBay&rdquo; again
+          to import the next batch — repeat until the console shows &ldquo;0 new&rdquo;.
         </p>
         <button
           type="button"

@@ -161,6 +161,9 @@ export async function fetchItemDetails(
     additionalImages?: Array<{ imageUrl?: string }>;
     condition?: string;
     conditionId?: string;
+    /** Browse API: top-level category path (e.g. "Clothing|Women|Dresses") – use this for mapping */
+    categoryPath?: string;
+    categoryId?: string;
     primaryItemCategory?: { categoryName?: string };
     seller?: { username?: string };
   };
@@ -190,7 +193,8 @@ export async function fetchItemDetails(
   }
 
   const condition = item?.condition ?? item?.conditionId ?? "";
-  const primaryCategoryName = item?.primaryItemCategory?.categoryName;
+  const primaryCategoryName =
+    item?.categoryPath ?? item?.primaryItemCategory?.categoryName ?? "";
   const sellerUsername = item?.seller?.username ?? "";
 
   return {
@@ -286,6 +290,8 @@ export async function fetchItemDetailsBatch(
       additionalImages?: Array<{ imageUrl?: string }>;
       condition?: string;
       conditionId?: string;
+      categoryPath?: string;
+      categoryId?: string;
       primaryItemCategory?: { categoryName?: string };
       seller?: { username?: string };
     }>;
@@ -312,7 +318,8 @@ export async function fetchItemDetailsBatch(
       if (img?.imageUrl) imageUrls.push(img.imageUrl);
     }
     const condition = item?.condition ?? item?.conditionId ?? "";
-    const primaryCategoryName = item?.primaryItemCategory?.categoryName;
+    const primaryCategoryName =
+      item?.categoryPath ?? item?.primaryItemCategory?.categoryName ?? "";
     const sellerUsername = item?.seller?.username ?? "";
 
     out.set(itemId, {
