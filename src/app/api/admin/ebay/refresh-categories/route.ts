@@ -158,7 +158,12 @@ function streamRefreshResponse(
               const details = await fetchItemDetails(appId, clientSecret, p.ebayItemId);
               if (details.errors.length) errors.push(...details.errors);
               const slug = mapEbayCategoryToOurs(details.primaryCategoryName);
-              const categoryId = slug ? slugToCategoryId.get(slug) ?? null : null;
+              const hasEbayCategory = (details.primaryCategoryName ?? "").trim().length > 0;
+              const categoryId = slug
+                ? slugToCategoryId.get(slug) ?? null
+                : hasEbayCategory
+                  ? null
+                  : p.categoryId;
               const ebayListingType = details.ebayListingType ?? null;
               const categoryChanged = p.categoryId !== categoryId;
               const listingTypeChanged = ebayListingType !== (p.ebayListingType ?? null);
@@ -168,10 +173,12 @@ function streamRefreshResponse(
                   data: { categoryId, ebayListingType },
                 });
                 batchUpdated++;
+                const rawName = (details.primaryCategoryName ?? "").trim();
+                const debugRaw = !slug && rawName.length > 0 ? ` (eBay: "${rawName.length > 45 ? rawName.slice(0, 45) + "…" : rawName}" – no mapping)` : !hasEbayCategory ? " (eBay returned no category)" : "";
                 emit({
                   type: "log",
                   ts: Date.now(),
-                  message: `  → ${slug ?? "—"} ${ebayListingType ? `[${ebayListingType}]` : ""}`,
+                  message: `  → ${slug ?? "—"} ${ebayListingType ? `[${ebayListingType}]` : ""}${debugRaw}`,
                 });
               }
             } catch (e) {

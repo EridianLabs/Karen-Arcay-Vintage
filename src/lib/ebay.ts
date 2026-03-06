@@ -350,7 +350,10 @@ export async function fetchItemDetails(
     return { itemId, errors };
   }
 
-  const itemIdEnc = encodeURIComponent(itemId);
+  const normalizedId = /^\d+$/.test(String(itemId).trim())
+    ? `v1|${itemId}|0`
+    : String(itemId);
+  const itemIdEnc = encodeURIComponent(normalizedId);
   const res = await fetch(
     `https://api.ebay.com/buy/browse/v1/item/${itemIdEnc}`,
     {
@@ -376,14 +379,13 @@ export async function fetchItemDetails(
     additionalImages?: Array<{ imageUrl?: string }>;
     condition?: string;
     conditionId?: string;
-    /** Browse API: top-level category path (e.g. "Clothing|Women|Dresses") – use this for mapping */
     categoryPath?: string;
     categoryId?: string;
-    /** When the listing/auction ends (ISO string) – for "ending soon" */
+    categoryIdPath?: string;
     itemEndDate?: string;
-    primaryItemCategory?: { categoryName?: string };
+    primaryItemCategory?: { categoryName?: string; categoryId?: string };
+    categories?: Array<{ categoryName?: string; categoryId?: string }>;
     seller?: { username?: string };
-    /** FIXED_PRICE (Buy It Now), AUCTION, BEST_OFFER, etc. */
     buyingOptions?: string[];
   };
 
@@ -413,7 +415,12 @@ export async function fetchItemDetails(
 
   const condition = item?.condition ?? item?.conditionId ?? "";
   const primaryCategoryName =
-    item?.categoryPath ?? item?.primaryItemCategory?.categoryName ?? "";
+    (item?.categoryPath as string | undefined) ??
+    item?.primaryItemCategory?.categoryName ??
+    (Array.isArray(item?.categories) && item.categories.length > 0
+      ? item.categories[0].categoryName
+      : undefined) ??
+    "";
   const sellerUsername = item?.seller?.username ?? "";
   const ebayEndDate = item?.itemEndDate ?? undefined;
   const buyingOptions = item?.buyingOptions ?? [];
