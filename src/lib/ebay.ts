@@ -48,11 +48,13 @@ async function getAccessToken(appId: string, clientSecret: string): Promise<stri
 /**
  * Fetch all active listing item IDs for a seller using keyword search + seller filter.
  * No category_ids – uses q=vintage and filter=sellers:{username}, paginated.
+ * Optional onPage(offset, totalSoFar) called after each page for progress.
  */
 export async function fetchStoreItemIds(
   appId: string,
   clientSecret: string,
-  sellerUsername: string
+  sellerUsername: string,
+  onPage?: (offset: number, totalSoFar: number) => void
 ): Promise<{ itemIds: string[]; errors: string[] }> {
   const itemIds: string[] = [];
   const errors: string[] = [];
@@ -71,18 +73,32 @@ export async function fetchStoreItemIds(
   };
 
   const limit = 200;
+  const maxItems = 2000;
+  const requestTimeoutMs = 25000;
   const sellerFilter = `sellers:{${sellerUsername}}`;
   const expectedSellerLower = sellerUsername.toLowerCase();
 
   let offset = 0;
   for (;;) {
+    if (itemIds.length >= maxItems) break;
     const url = new URL("https://api.ebay.com/buy/browse/v1/item_summary/search");
     url.searchParams.set("q", "vintage");
     url.searchParams.set("filter", sellerFilter);
     url.searchParams.set("limit", String(limit));
     url.searchParams.set("offset", String(offset));
 
-    const res = await fetch(url.toString(), { headers });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), requestTimeoutMs);
+    let res: Response;
+    try {
+      res = await fetch(url.toString(), { headers, signal: controller.signal });
+    } catch (e) {
+      clearTimeout(timeoutId);
+      errors.push(e instanceof Error ? e.message : "Search request failed");
+      break;
+    }
+    clearTimeout(timeoutId);
+
     if (!res.ok) {
       const text = await res.text();
       errors.push(`Browse API search HTTP ${res.status}: ${text.slice(0, 200)}`);
@@ -95,11 +111,14 @@ export async function fetchStoreItemIds(
     const summaries = data?.itemSummaries ?? [];
 
     for (const s of summaries) {
+      if (itemIds.length >= maxItems) break;
       if (!s?.itemId) continue;
       const itemSeller = (s.seller?.username ?? "").toLowerCase();
       if (itemSeller !== expectedSellerLower) continue;
       itemIds.push(s.itemId);
     }
+
+    onPage?.(offset, itemIds.length);
 
     if (summaries.length === 0) break;
     offset += limit;

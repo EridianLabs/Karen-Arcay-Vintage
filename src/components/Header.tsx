@@ -46,9 +46,9 @@ export function Header() {
           <Image
             src="/logo.svg"
             alt="Karen Arcay Vintage"
-            width={160}
-            height={50}
-            className="h-8 w-auto object-contain"
+            width={320}
+            height={100}
+            className="h-16 w-auto object-contain"
             priority
           />
         </Link>

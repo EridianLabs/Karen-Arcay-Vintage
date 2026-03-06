@@ -35,13 +35,22 @@ function streamSyncResponse(
       };
       const result: EbaySyncResult = { created: 0, updated: 0, failed: 0, totalFetched: 0, errors: [] };
       try {
-        emit({ type: "log", ts: Date.now(), message: "Fetching item IDs from eBay (seller filter)…" });
+        emit({ type: "log", ts: Date.now(), message: "Starting sync…" });
+        emit({ type: "log", ts: Date.now(), message: "Fetching item IDs from eBay (search + seller filter, 200 per page)…" });
         const { itemIds: allItemIds, errors: idErrors } = await fetchStoreItemIds(
           appId,
           clientSecret,
-          sellerUsername
+          sellerUsername,
+          (offset, totalSoFar) => {
+            emit({
+              type: "log",
+              ts: Date.now(),
+              message: `  Search page (offset ${offset}): ${totalSoFar} item IDs so far`,
+            });
+          }
         );
         result.errors.push(...idErrors);
+        emit({ type: "log", ts: Date.now(), message: `Item ID fetch done. Total: ${allItemIds.length} IDs.` });
         let itemIds: string[];
         if (skipExisting && allItemIds.length > 0) {
           const { prisma } = await import("@/lib/db");
@@ -72,17 +81,20 @@ function streamSyncResponse(
           return;
         }
 
+        emit({ type: "log", ts: Date.now(), message: "Loading category list from database…" });
         const { prisma } = await import("@/lib/db");
         const categories = await prisma.category.findMany();
         const slugToCategoryId = new Map(categories.map((c) => [c.slug, c.id]));
         const allowedSeller = (sellerUsername || ALLOWED_EBAY_SELLER).toLowerCase();
         const totalBatches = Math.ceil(itemIds.length / BATCH_SIZE);
+        emit({ type: "log", ts: Date.now(), message: `Processing ${itemIds.length} items in ${totalBatches} batch(es) (${BATCH_SIZE} per batch)…` });
 
         for (let offset = 0; offset < itemIds.length; offset += BATCH_SIZE) {
           const batchIndex = Math.floor(offset / BATCH_SIZE) + 1;
           const batch = itemIds.slice(offset, offset + BATCH_SIZE);
-          emit({ type: "log", ts: Date.now(), message: `Fetching batch ${batchIndex}/${totalBatches} (${batch.length} items)…` });
+          emit({ type: "log", ts: Date.now(), message: `Batch ${batchIndex}/${totalBatches}: Fetching item details from eBay (${batch.length} getItem calls)…` });
           const detailsMap = await fetchItemDetailsBatch(appId, clientSecret, batch);
+          emit({ type: "log", ts: Date.now(), message: `  Got details. Writing to database…` });
           if (offset + BATCH_SIZE < itemIds.length) {
             await new Promise((r) => setTimeout(r, DELAY_BETWEEN_BATCHES_MS));
           }
@@ -139,8 +151,11 @@ function streamSyncResponse(
           emit({
             type: "log",
             ts: Date.now(),
-            message: `  Batch ${batchIndex}: ${batchCreated} created, ${batchUpdated} updated, ${batchFailed} failed`,
+            message: `  Batch ${batchIndex} done: ${batchCreated} created, ${batchUpdated} updated, ${batchFailed} failed`,
           });
+          if (batchIndex < totalBatches) {
+            emit({ type: "log", ts: Date.now(), message: `  Waiting ${DELAY_BETWEEN_BATCHES_MS}ms before next batch…` });
+          }
         }
 
         emit({ type: "log", ts: Date.now(), message: "Sync complete." });
