@@ -56,24 +56,18 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Social + Payment */}
+        {/* Social */}
         <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-zinc-200 pt-8">
           <div className="flex gap-4 text-sm text-zinc-600">
             <a href="https://www.instagram.com/karenarcayvintage" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-900">Instagram</a>
             <a href="https://www.facebook.com/karenarcayvintage" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-900">Facebook</a>
-          </div>
-          <div className="flex items-center gap-2 text-zinc-400" aria-hidden>
-            <span className="text-lg" title="Visa">💳</span>
-            <span className="text-lg" title="Mastercard">💳</span>
-            <span className="text-lg" title="PayPal">PayPal</span>
-            <span className="text-sm text-zinc-500">Stripe</span>
           </div>
         </div>
 
         <p className="mt-6 text-center text-sm text-zinc-500">
           © {new Date().getFullYear()} Karen Arcay Vintage. UK.
         </p>
-        <p className="mt-1 text-center text-xs text-zinc-400">
+        <p className="mt-2 text-center text-sm text-zinc-500">
           v1.1.0
         </p>
       </div>
