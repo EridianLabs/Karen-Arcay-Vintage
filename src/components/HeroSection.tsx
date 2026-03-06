@@ -21,7 +21,7 @@ export function HeroSection() {
           Karen Arcay Vintage
         </h1>
         <p className="mt-2 max-w-md text-lg text-white/95 drop-shadow">
-          Curated vintage clothing & accessories, value-priced in the UK
+          Separates, shoes & boots, vintage furniture, accessories, books, coats & jackets and more. New items listed regularly.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Link

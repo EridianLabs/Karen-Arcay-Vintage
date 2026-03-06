@@ -45,16 +45,24 @@ async function getAccessToken(appId: string, clientSecret: string): Promise<stri
   return cachedToken.token;
 }
 
+/** Search keywords used to discover seller listings. One search only returns items matching that keyword, so we run several and merge to get closer to the store’s full count. */
+const STORE_SEARCH_KEYWORDS = [
+  "vintage",
+  "retro",
+  "antique",
+  "(vintage,retro,antique,1970s,1960s,1950s)",
+];
+
 /**
  * Fetch all active listing item IDs for a seller using keyword search + seller filter.
- * No category_ids – uses q=vintage and filter=sellers:{username}, paginated.
- * Optional onPage(offset, totalSoFar) called after each page for progress.
+ * Runs multiple keyword searches and merges results so we don’t miss items that don’t match “vintage” (e.g. store shows 787 but one search only returns ~414).
+ * Optional onPage(offset, totalSoFar, keyword?) called after each page for progress.
  */
 export async function fetchStoreItemIds(
   appId: string,
   clientSecret: string,
   sellerUsername: string,
-  onPage?: (offset: number, totalSoFar: number) => void
+  onPage?: (offset: number, totalSoFar: number, keyword?: string) => void
 ): Promise<{ itemIds: string[]; errors: string[] }> {
   const seen = new Set<string>();
   const itemIds: string[] = [];
@@ -79,55 +87,58 @@ export async function fetchStoreItemIds(
   const sellerFilter = `sellers:{${sellerUsername}}`;
   const expectedSellerLower = sellerUsername.toLowerCase();
 
-  let offset = 0;
-  for (;;) {
+  for (const keyword of STORE_SEARCH_KEYWORDS) {
     if (seen.size >= maxItems) break;
-    const url = new URL("https://api.ebay.com/buy/browse/v1/item_summary/search");
-    url.searchParams.set("q", "vintage");
-    url.searchParams.set("filter", sellerFilter);
-    url.searchParams.set("limit", String(limit));
-    url.searchParams.set("offset", String(offset));
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), requestTimeoutMs);
-    let res: Response;
-    try {
-      res = await fetch(url.toString(), { headers, signal: controller.signal });
-    } catch (e) {
-      clearTimeout(timeoutId);
-      errors.push(e instanceof Error ? e.message : "Search request failed");
-      break;
-    }
-    clearTimeout(timeoutId);
-
-    if (!res.ok) {
-      const text = await res.text();
-      errors.push(`Browse API search HTTP ${res.status}: ${text.slice(0, 200)}`);
-      break;
-    }
-
-    const data = (await res.json()) as {
-      itemSummaries?: Array<{ itemId?: string; seller?: { username?: string } }>;
-    };
-    const summaries = data?.itemSummaries ?? [];
-
-    let newOnThisPage = 0;
-    for (const s of summaries) {
+    let offset = 0;
+    for (;;) {
       if (seen.size >= maxItems) break;
-      if (!s?.itemId) continue;
-      const itemSeller = (s.seller?.username ?? "").toLowerCase();
-      if (itemSeller !== expectedSellerLower) continue;
-      if (seen.has(s.itemId)) continue;
-      seen.add(s.itemId);
-      itemIds.push(s.itemId);
-      newOnThisPage++;
+      const url = new URL("https://api.ebay.com/buy/browse/v1/item_summary/search");
+      url.searchParams.set("q", keyword);
+      url.searchParams.set("filter", sellerFilter);
+      url.searchParams.set("limit", String(limit));
+      url.searchParams.set("offset", String(offset));
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), requestTimeoutMs);
+      let res: Response;
+      try {
+        res = await fetch(url.toString(), { headers, signal: controller.signal });
+      } catch (e) {
+        clearTimeout(timeoutId);
+        errors.push(e instanceof Error ? e.message : "Search request failed");
+        break;
+      }
+      clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        const text = await res.text();
+        errors.push(`Browse API search HTTP ${res.status}: ${text.slice(0, 200)}`);
+        break;
+      }
+
+      const data = (await res.json()) as {
+        itemSummaries?: Array<{ itemId?: string; seller?: { username?: string } }>;
+      };
+      const summaries = data?.itemSummaries ?? [];
+
+      let newOnThisPage = 0;
+      for (const s of summaries) {
+        if (seen.size >= maxItems) break;
+        if (!s?.itemId) continue;
+        const itemSeller = (s.seller?.username ?? "").toLowerCase();
+        if (itemSeller !== expectedSellerLower) continue;
+        if (seen.has(s.itemId)) continue;
+        seen.add(s.itemId);
+        itemIds.push(s.itemId);
+        newOnThisPage++;
+      }
+
+      onPage?.(offset, itemIds.length, keyword);
+
+      if (summaries.length === 0) break;
+      if (newOnThisPage === 0) break;
+      offset += limit;
     }
-
-    onPage?.(offset, itemIds.length);
-
-    if (summaries.length === 0) break;
-    if (summaries.length === limit && newOnThisPage === 0) break;
-    offset += limit;
   }
 
   return { itemIds, errors };

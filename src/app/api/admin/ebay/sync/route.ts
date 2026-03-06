@@ -41,11 +41,12 @@ function streamSyncResponse(
           appId,
           clientSecret,
           sellerUsername,
-          (offset, totalSoFar) => {
+          (offset, totalSoFar, keyword) => {
+            const q = keyword ? ` "${keyword}"` : "";
             emit({
               type: "log",
               ts: Date.now(),
-              message: `  Search page (offset ${offset}): ${totalSoFar} item IDs so far`,
+              message: `  Search${q} page (offset ${offset}): ${totalSoFar} item IDs so far`,
             });
           }
         );

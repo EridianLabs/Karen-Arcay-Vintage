@@ -11,7 +11,7 @@ export function Footer() {
           <div>
             <p className="font-semibold text-zinc-900">Karen Arcay Vintage</p>
             <p className="mt-2 text-sm text-zinc-600">
-              UK-based vintage clothing & accessories. Value-priced. Easy returns.
+              UK-based vintage clothing & accessories. Value-priced. 100% positive feedback. Add us to your favourite sellers and check back for new listings.
             </p>
           </div>
 
