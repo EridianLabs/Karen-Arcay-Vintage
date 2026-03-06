@@ -218,21 +218,7 @@ export async function fetchItemDetails(
   };
 }
 
-const ITEM_DETAIL_SHAPE = {
-  title: undefined as string | undefined,
-  description: undefined as string | undefined,
-  price: undefined as number | undefined,
-  currency: "GBP" as string,
-  viewItemURL: undefined as string | undefined,
-  imageUrls: undefined as string[] | undefined,
-  condition: undefined as string | undefined,
-  primaryCategoryName: undefined as string | undefined,
-  sellerUsername: undefined as string | undefined,
-  ebayEndDate: undefined as string | undefined,
-  errors: [] as string[],
-};
-
-/** Fetch up to 20 items. Tries Browse API getItems (batch); on 403 (Limited Release) falls back to getItem per item. */
+/** Fetch up to 20 items using getItem per item (getItems batch is Limited Release and returns 403 for most apps). */
 export async function fetchItemDetailsBatch(
   appId: string,
   clientSecret: string,
@@ -241,114 +227,12 @@ export async function fetchItemDetailsBatch(
   const slice = itemIds.slice(0, 20);
   if (slice.length === 0) return new Map();
 
-  let token: string;
-  try {
-    token = await getAccessToken(appId, clientSecret);
-  } catch {
-    const out = new Map<string, Awaited<ReturnType<typeof fetchItemDetails>>>();
-    for (const id of slice) {
-      out.set(id, { ...ITEM_DETAIL_SHAPE, itemId: id, errors: ["Failed to get eBay OAuth token"] });
-    }
-    return out;
-  }
-
-  const idsParam = slice.map((id) => encodeURIComponent(id)).join(",");
-  const url = `https://api.ebay.com/buy/browse/v1/item?item_ids=${idsParam}`;
-  const res = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "X-EBAY-C-MARKETPLACE-ID": EBAY_MARKETPLACE_UK,
-    },
-  });
-
-  if (res.status === 403) {
-    // getItems is Limited Release; most apps get 403. Fall back to one getItem per id.
-    const out = new Map<string, Awaited<ReturnType<typeof fetchItemDetails>>>();
-    for (let i = 0; i < slice.length; i++) {
-      const detail = await fetchItemDetails(appId, clientSecret, slice[i]);
-      out.set(slice[i], detail);
-      if (i < slice.length - 1) {
-        await new Promise((r) => setTimeout(r, 150));
-      }
-    }
-    return out;
-  }
-
-  if (!res.ok) {
-    const out = new Map<string, Awaited<ReturnType<typeof fetchItemDetails>>>();
-    const err = `Browse API getItems HTTP ${res.status}`;
-    for (const id of slice) {
-      out.set(id, { ...ITEM_DETAIL_SHAPE, itemId: id, errors: [err] });
-    }
-    return out;
-  }
-
   const out = new Map<string, Awaited<ReturnType<typeof fetchItemDetails>>>();
-
-  const data = (await res.json()) as {
-    items?: Array<{
-      itemId?: string;
-      title?: string;
-      shortDescription?: string;
-      itemDescription?: string;
-      price?: { value?: string; currency?: string };
-      itemWebUrl?: string;
-      image?: { imageUrl?: string };
-      additionalImages?: Array<{ imageUrl?: string }>;
-      condition?: string;
-      conditionId?: string;
-      categoryPath?: string;
-      categoryId?: string;
-      itemEndDate?: string;
-      primaryItemCategory?: { categoryName?: string };
-      seller?: { username?: string };
-    }>;
-  };
-
-  const items = data?.items ?? [];
-  for (const item of items) {
-    const itemId = item?.itemId ?? "";
-    const title = item?.title ?? "";
-    const desc =
-      item?.shortDescription ??
-      (typeof item?.itemDescription === "string" ? item.itemDescription : "");
-    const description = (desc || title)
-      .replace(/<[^>]*>/g, " ")
-      .replace(/\s+/g, " ")
-      .trim()
-      .slice(0, 8000);
-    const priceVal = item?.price?.value;
-    const price = priceVal != null ? parseFloat(priceVal) : undefined;
-    const viewItemURL = item?.itemWebUrl ?? "";
-    const imageUrls: string[] = [];
-    if (item?.image?.imageUrl) imageUrls.push(item.image.imageUrl);
-    for (const img of item?.additionalImages ?? []) {
-      if (img?.imageUrl) imageUrls.push(img.imageUrl);
-    }
-    const condition = item?.condition ?? item?.conditionId ?? "";
-    const primaryCategoryName =
-      item?.categoryPath ?? item?.primaryItemCategory?.categoryName ?? "";
-    const sellerUsername = item?.seller?.username ?? "";
-    const ebayEndDate = item?.itemEndDate ?? undefined;
-
-    out.set(itemId, {
-      itemId,
-      title,
-      description,
-      price,
-      currency: item?.price?.currency ?? "GBP",
-      viewItemURL,
-      imageUrls: imageUrls.length ? imageUrls : undefined,
-      condition,
-      primaryCategoryName,
-      sellerUsername,
-      ebayEndDate,
-      errors: [],
-    });
-  }
-  for (const id of slice) {
-    if (!out.has(id)) {
-      out.set(id, { ...ITEM_DETAIL_SHAPE, itemId: id, errors: ["Item not in response"] });
+  for (let i = 0; i < slice.length; i++) {
+    const detail = await fetchItemDetails(appId, clientSecret, slice[i]);
+    out.set(slice[i], detail);
+    if (i < slice.length - 1) {
+      await new Promise((r) => setTimeout(r, 150));
     }
   }
   return out;
