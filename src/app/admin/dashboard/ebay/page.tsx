@@ -23,15 +23,15 @@ export default function AdminEbayPage() {
     if (logs.length) consoleEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [logs.length]);
 
-  const handleSync = async () => {
+  const runStream = async (url: string, body: Record<string, unknown>) => {
     setSyncing(true);
     setResult(null);
     setLogs([]);
     try {
-      const res = await fetch("/api/admin/ebay/sync", {
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storeName, stream: true }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -71,12 +71,13 @@ export default function AdminEbayPage() {
             if (data.type === "log" && data.message != null) {
               setLogs((prev) => [...prev, { ts: data.ts ?? Date.now(), message: data.message! }]);
             } else if (data.type === "result") {
+              const r = data as SyncResult & { total?: number };
               setResult({
-                created: data.created ?? 0,
-                updated: data.updated ?? 0,
-                failed: data.failed ?? 0,
-                totalFetched: data.totalFetched ?? 0,
-                errors: data.errors ?? [],
+                created: r.created ?? 0,
+                updated: r.updated ?? 0,
+                failed: r.failed ?? 0,
+                totalFetched: r.totalFetched ?? r.total ?? 0,
+                errors: r.errors ?? [],
               });
             }
           } catch {
@@ -86,7 +87,7 @@ export default function AdminEbayPage() {
       }
       if (buf.trim()) {
         try {
-          const data = JSON.parse(buf.trim()) as { type: string; message?: string } & SyncResult;
+          const data = JSON.parse(buf.trim()) as { type: string; message?: string } & SyncResult & { total?: number };
           if (data.type === "log" && data.message != null) {
             setLogs((prev) => [...prev, { ts: Date.now(), message: data.message! }]);
           } else if (data.type === "result") {
@@ -94,7 +95,7 @@ export default function AdminEbayPage() {
               created: data.created ?? 0,
               updated: data.updated ?? 0,
               failed: data.failed ?? 0,
-              totalFetched: data.totalFetched ?? 0,
+              totalFetched: data.totalFetched ?? data.total ?? 0,
               errors: data.errors ?? [],
             });
           }
@@ -115,6 +116,11 @@ export default function AdminEbayPage() {
       setSyncing(false);
     }
   };
+
+  const handleSync = () => runStream("/api/admin/ebay/sync", { storeName, stream: true });
+
+  const handleRefreshCategories = () =>
+    runStream("/api/admin/ebay/refresh-categories", { stream: true, missingOnly: true });
 
   return (
     <div>
@@ -163,14 +169,27 @@ export default function AdminEbayPage() {
           If she has more listings (e.g. 400+), click &ldquo;Sync from eBay&rdquo; again
           to import the next batch — repeat until the console shows &ldquo;0 new&rdquo;.
         </p>
-        <button
-          type="button"
-          onClick={handleSync}
-          disabled={syncing}
-          className="mt-4 rounded bg-black px-6 py-2 font-medium text-white hover:bg-zinc-800 disabled:opacity-70"
-        >
-          {syncing ? "Syncing…" : "Sync from eBay"}
-        </button>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={handleSync}
+            disabled={syncing}
+            className="rounded bg-black px-6 py-2 font-medium text-white hover:bg-zinc-800 disabled:opacity-70"
+          >
+            {syncing ? "Syncing…" : "Sync from eBay"}
+          </button>
+          <button
+            type="button"
+            onClick={handleRefreshCategories}
+            disabled={syncing}
+            className="rounded border border-zinc-400 bg-white px-6 py-2 font-medium text-zinc-800 hover:bg-zinc-100 disabled:opacity-70"
+          >
+            {syncing ? "Working…" : "Refresh categories from eBay"}
+          </button>
+        </div>
+        <p className="mt-3 text-xs text-zinc-500">
+          <strong>Refresh categories</strong> re-fetches each product&apos;s eBay category (up to 80 per run, 200ms between calls) and updates your site categories. Use &quot;missing only&quot; to fill in products with no category first. Run again to do more.
+        </p>
 
         {(syncing || logs.length > 0) && (
           <div className="mt-6">

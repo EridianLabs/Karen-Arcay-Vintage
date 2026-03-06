@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useCart } from "@/context/CartContext";
 import { useState, useEffect, useRef } from "react";
 
@@ -41,8 +42,15 @@ export function Header() {
         >
           <span className="text-lg">{menuOpen ? "✕" : "☰"}</span>
         </button>
-        <Link href="/" className="text-xl font-bold tracking-tight">
-          Karen Arcay Vintage
+        <Link href="/" className="flex items-center shrink-0" aria-label="Karen Arcay Vintage – Home">
+          <Image
+            src="/logo.svg"
+            alt="Karen Arcay Vintage"
+            width={160}
+            height={50}
+            className="h-8 w-auto object-contain"
+            priority
+          />
         </Link>
         <nav className="hidden lg:flex items-center gap-6">
           <Link
