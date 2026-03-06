@@ -17,10 +17,11 @@ export default function AdminEbayPage() {
   const [result, setResult] = useState<SyncResult | null>(null);
   const [storeName, setStoreName] = useState("sindypink");
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const consoleEndRef = useRef<HTMLDivElement>(null);
+  const consoleContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (logs.length) consoleEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = consoleContainerRef.current;
+    if (el && logs.length) el.scrollTop = el.scrollHeight;
   }, [logs.length]);
 
   const runStream = async (url: string, body: Record<string, unknown>) => {
@@ -195,6 +196,7 @@ export default function AdminEbayPage() {
           <div className="mt-6">
             <h3 className="mb-2 font-medium text-zinc-700">Sync console</h3>
             <div
+              ref={consoleContainerRef}
               className="max-h-64 overflow-y-auto rounded border border-zinc-300 bg-zinc-900 px-4 py-3 font-mono text-sm text-zinc-100"
               role="log"
               aria-live="polite"
@@ -210,7 +212,6 @@ export default function AdminEbayPage() {
               {syncing && logs.length === 0 && (
                 <div className="text-zinc-500">Connecting…</div>
               )}
-              <div ref={consoleEndRef} />
             </div>
           </div>
         )}
