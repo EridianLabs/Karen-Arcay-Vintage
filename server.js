@@ -1,27 +1,37 @@
 /**
  * Custom Node server for Namecheap / cPanel deployment.
  * cPanel "Setup Node.js App" runs this file and sets PORT.
- * Runs prisma generate first if node_modules has prisma (so @prisma/client exists).
+ * Requires: (1) node_modules from "Run NPM Install", (2) .next from local "npm run build" in the zip.
  */
 const { createServer } = require("http");
 const { parse } = require("url");
 const { execSync } = require("child_process");
 const path = require("path");
 const fs = require("fs");
-const next = require("next");
 
 const cwd = __dirname;
+
+// 1. Require node_modules (Prisma)
 const prismaCmd = path.join(cwd, "node_modules", ".bin", process.platform === "win32" ? "prisma.cmd" : "prisma");
-if (fs.existsSync(prismaCmd)) {
-  try {
-    execSync(`"${prismaCmd}" generate`, { cwd, stdio: "pipe", encoding: "utf-8" });
-  } catch (e) {
-    console.error("[server.js] prisma generate failed:", e.message);
-  }
-} else {
-  console.warn("[server.js] Prisma not in node_modules. Run 'Run NPM Install' in cPanel, then Restart.");
+if (!fs.existsSync(prismaCmd)) {
+  console.error("[server.js] Prisma not in node_modules. In cPanel: Setup Node.js App → Run NPM Install → Restart.");
+  process.exit(1);
+}
+try {
+  execSync(`"${prismaCmd}" generate`, { cwd, stdio: "pipe", encoding: "utf-8" });
+} catch (e) {
+  console.error("[server.js] prisma generate failed:", e.message);
+  process.exit(1);
 }
 
+// 2. Require production build (.next)
+const nextBuildId = path.join(cwd, ".next", "BUILD_ID");
+if (!fs.existsSync(nextBuildId)) {
+  console.error("[server.js] No .next build. On your computer: npm run build, then zip including .next and re-upload.");
+  process.exit(1);
+}
+
+const next = require("next");
 const dev = process.env.NODE_ENV !== "production";
 const hostname = "localhost";
 const port = parseInt(process.env.PORT || "3000", 10);

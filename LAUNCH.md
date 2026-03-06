@@ -4,6 +4,27 @@ One list. Do the steps in order. The eBay endpoint is already in your site; you 
 
 ---
 
+## Deploy from GitHub (your usual workflow)
+
+You **fetch the app from GitHub** (clone or pull into your hosting). The repo does **not** include `node_modules` or `.next`, so on the server you must install and build after each deploy:
+
+1. **Get the code from GitHub** into your app folder (e.g. **nodeapp**).  
+   - Either: cPanel **Terminal** → `cd ~/nodeapp` → `git pull origin main`  
+   - Or: clone fresh into nodeapp, or use cPanel’s “Git Version Control” / “Deploy from repository” if you have it.
+
+2. **On the server**, in the app folder, run:
+   ```bash
+   npm install
+   npm run build
+   ```
+   - If you use **Setup Node.js App**: click **Run NPM Install**, then in **Terminal** run `npm run build` in the app folder (e.g. `cd ~/nodeapp && npm run build`).
+
+3. **Restart** the Node.js app in Setup Node.js App.
+
+If the host **does not let you run `npm run build`** (no Terminal, or build runs out of memory/time), then you have to build on your computer and upload: run `npm run build` locally, zip including the `.next` folder, upload that zip to nodeapp and extract, then on the server only **Run NPM Install** and **Restart** (no build on server).
+
+---
+
 ## 1. Point your domain
 
 - Namecheap → **Domain List** → **Manage** (karenarcayvintage.com).
@@ -131,6 +152,9 @@ eBay will then verify the URL. You don’t need to install or deploy anything el
 - **Admin login doesn’t work**: Run the setup URL below (or `npx prisma db seed` in the app folder), then try `admin` / `admin123`.
 - **Still see “[start.js]” in logs**: The app is still using start.js. In **File Manager → nodeapp**, **delete start.js** so only server.js can run. In Setup Node.js App set **Application startup file** to **server.js**, Save, Restart.
 - **“Unable to open the database file”**: The Node process can’t create or write to the SQLite file. (1) In cPanel set **DATABASE_URL** to the **full path**: `file:/home/karezcxo/nodeapp/prisma/dev.db` (replace with your actual path if different). (2) In File Manager open **nodeapp/prisma**, check that the folder exists; right‑click **prisma** → **Permissions** → set to **775** so the app can create `dev.db` inside it. (3) Restart the app, then open your setup URL once to run `prisma db push` and create the tables.
+
+**Error 503 + "Prisma not in node_modules" or "No production build in .next"**  
+When you **deploy from GitHub**, the server has no `node_modules` and no `.next`. After pulling/cloning into the app folder, on the server run: **`npm install`** then **`npm run build`**, then **Restart**. (In cPanel: Run NPM Install, then Terminal `cd ~/nodeapp && npm run build`, then Restart.) If the host won’t run `npm run build` (no Terminal or build fails), build locally and zip including `.next`, upload and extract, then Run NPM Install and Restart.
 
 For more detail (Stripe webhook, troubleshooting), see **DEPLOY-NAMECHEAP.md**.
 
