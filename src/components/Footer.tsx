@@ -73,6 +73,9 @@ export function Footer() {
         <p className="mt-6 text-center text-sm text-zinc-500">
           © {new Date().getFullYear()} Karen Arcay Vintage. UK.
         </p>
+        <p className="mt-1 text-center text-xs text-zinc-400">
+          v1.1.0
+        </p>
       </div>
     </footer>
   );
