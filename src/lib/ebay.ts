@@ -56,6 +56,7 @@ export async function fetchStoreItemIds(
   sellerUsername: string,
   onPage?: (offset: number, totalSoFar: number) => void
 ): Promise<{ itemIds: string[]; errors: string[] }> {
+  const seen = new Set<string>();
   const itemIds: string[] = [];
   const errors: string[] = [];
 
@@ -73,14 +74,14 @@ export async function fetchStoreItemIds(
   };
 
   const limit = 200;
-  const maxItems = 2000;
+  const maxItems = 5000;
   const requestTimeoutMs = 25000;
   const sellerFilter = `sellers:{${sellerUsername}}`;
   const expectedSellerLower = sellerUsername.toLowerCase();
 
   let offset = 0;
   for (;;) {
-    if (itemIds.length >= maxItems) break;
+    if (seen.size >= maxItems) break;
     const url = new URL("https://api.ebay.com/buy/browse/v1/item_summary/search");
     url.searchParams.set("q", "vintage");
     url.searchParams.set("filter", sellerFilter);
@@ -110,17 +111,22 @@ export async function fetchStoreItemIds(
     };
     const summaries = data?.itemSummaries ?? [];
 
+    let newOnThisPage = 0;
     for (const s of summaries) {
-      if (itemIds.length >= maxItems) break;
+      if (seen.size >= maxItems) break;
       if (!s?.itemId) continue;
       const itemSeller = (s.seller?.username ?? "").toLowerCase();
       if (itemSeller !== expectedSellerLower) continue;
+      if (seen.has(s.itemId)) continue;
+      seen.add(s.itemId);
       itemIds.push(s.itemId);
+      newOnThisPage++;
     }
 
     onPage?.(offset, itemIds.length);
 
     if (summaries.length === 0) break;
+    if (summaries.length === limit && newOnThisPage === 0) break;
     offset += limit;
   }
 

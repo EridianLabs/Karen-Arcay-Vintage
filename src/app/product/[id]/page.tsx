@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
-import Image from "next/image";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { AddToCartButton } from "./AddToCartButton";
+import { ProductImageGallery } from "./ProductImageGallery";
 import { RelatedProducts } from "./RelatedProducts";
 
 async function getProduct(id: string) {
@@ -33,22 +33,7 @@ export default async function ProductPage({
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
       <div className="grid gap-8 lg:grid-cols-2">
-        <div className="aspect-square max-w-lg overflow-hidden rounded-lg bg-zinc-100">
-          {images[0] ? (
-            <Image
-              src={images[0].startsWith("http") ? images[0] : images[0]}
-              alt={product.title}
-              width={600}
-              height={600}
-              className="h-full w-full object-cover"
-              priority
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-zinc-400">
-              No image
-            </div>
-          )}
-        </div>
+        <ProductImageGallery images={images} alt={product.title} />
         <div>
           {product.category && (
             <Link

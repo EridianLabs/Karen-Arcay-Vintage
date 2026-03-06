@@ -123,6 +123,9 @@ export default function AdminEbayPage() {
   const handleRefreshCategories = () =>
     runStream("/api/admin/ebay/refresh-categories", { stream: true, missingOnly: true });
 
+  const handleFetchImages = () =>
+    runStream("/api/admin/ebay/fetch-images", { stream: true });
+
   return (
     <div>
       <h1 className="text-2xl font-bold">eBay import &amp; sync</h1>
@@ -187,9 +190,17 @@ export default function AdminEbayPage() {
           >
             {syncing ? "Working…" : "Refresh categories from eBay"}
           </button>
+          <button
+            type="button"
+            onClick={handleFetchImages}
+            disabled={syncing}
+            className="rounded border border-zinc-400 bg-white px-6 py-2 font-medium text-zinc-800 hover:bg-zinc-100 disabled:opacity-70"
+          >
+            {syncing ? "Working…" : "Fetch product images from eBay"}
+          </button>
         </div>
         <p className="mt-3 text-xs text-zinc-500">
-          <strong>Refresh categories</strong> re-fetches each product&apos;s eBay category (up to 80 per run, 200ms between calls) and updates your site categories. Use &quot;missing only&quot; to fill in products with no category first. Run again to do more.
+          <strong>Refresh categories</strong> re-fetches each product&apos;s eBay category (up to 80 per run, 200ms between calls) and updates your site categories. Use &quot;missing only&quot; to fill in products with no category first. Run again to get more. — <strong>Fetch product images</strong> re-downloads the full image list from eBay for each product (up to 40 per run, 2.5s delay between each to avoid rate limits). Progress is shown in the console below. Run multiple times to cover all products over time.
         </p>
 
         {(syncing || logs.length > 0) && (
