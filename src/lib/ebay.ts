@@ -63,6 +63,67 @@ const STORE_SEARCH_KEYWORDS = [
   "vintage handbag",
   "1980s",
   "1990s",
+  "1970s",
+  "1960s",
+  "1950s",
+  "1940s",
+  "vintage maxi dress",
+  "vintage midi dress",
+  "vintage cardigan",
+  "vintage jumper",
+  "vintage knitwear",
+  "vintage blazer",
+  "vintage trousers",
+  "vintage scarf",
+  "vintage hat",
+  "vintage millinery",
+  "vintage wedding",
+  "vintage bridal",
+  "vintage lingerie",
+  "vintage nightdress",
+  "vintage jewellery",
+  "vintage necklace",
+  "vintage bracelet",
+  "vintage brooch",
+  "vintage earrings",
+  "vintage bag",
+  "vintage gloves",
+  "vintage belt",
+  "vintage waistcoat",
+  "vintage tie",
+  "vintage playsuit",
+  "vintage jumpsuit",
+  "vintage shorts",
+  "vintage dressing gown",
+  "vintage robe",
+  "Seasalt",
+  "Jaeger",
+  "Moschino",
+  "Gucci",
+  "St Michael",
+  "M&S vintage",
+  "Pippa doll",
+  "Barbie vintage",
+  "vintage doll",
+  "dolls house",
+  "vintage fabric",
+  "vintage sewing",
+  "vintage typewriter",
+  "vintage furniture",
+  "vintage lamp",
+  "vintage mirror",
+  "vintage vase",
+  "vintage china",
+  "vintage plate",
+  "vintage teapot",
+  "vintage jug",
+  "vintage glass",
+  "vintage decanter",
+  "Avon vintage",
+  "Yardley vintage",
+  "Estée Lauder vintage",
+  "vintage perfume",
+  "vintage cosmetics",
 ];
 
 /**
@@ -173,6 +234,8 @@ export async function fetchItemDetails(
   sellerUsername?: string;
   /** ISO date string when listing/auction ends (Browse API itemEndDate) */
   ebayEndDate?: string;
+  /** FIXED_PRICE (Buy It Now) or AUCTION from buyingOptions */
+  ebayListingType?: string;
   errors: string[];
 }> {
   const errors: string[] = [];
@@ -218,6 +281,8 @@ export async function fetchItemDetails(
     itemEndDate?: string;
     primaryItemCategory?: { categoryName?: string };
     seller?: { username?: string };
+    /** FIXED_PRICE (Buy It Now), AUCTION, BEST_OFFER, etc. */
+    buyingOptions?: string[];
   };
 
   const title = item?.title ?? "";
@@ -249,6 +314,13 @@ export async function fetchItemDetails(
     item?.categoryPath ?? item?.primaryItemCategory?.categoryName ?? "";
   const sellerUsername = item?.seller?.username ?? "";
   const ebayEndDate = item?.itemEndDate ?? undefined;
+  const buyingOptions = item?.buyingOptions ?? [];
+  const ebayListingType =
+    buyingOptions.includes("AUCTION")
+      ? "AUCTION"
+      : buyingOptions.includes("FIXED_PRICE")
+        ? "FIXED_PRICE"
+        : buyingOptions[0] ?? undefined;
 
   return {
     itemId,
@@ -262,6 +334,7 @@ export async function fetchItemDetails(
     primaryCategoryName,
     sellerUsername,
     ebayEndDate,
+    ebayListingType,
     errors,
   };
 }

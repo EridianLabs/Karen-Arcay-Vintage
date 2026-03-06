@@ -8,6 +8,7 @@ export const maxDuration = 300;
 
 const DELAY_MS = 200;
 const MAX_PER_RUN = 80;
+const BATCH_SIZE_REFETCH_ALL = 100;
 
 export async function POST(req: Request) {
   try {
@@ -55,10 +56,13 @@ export async function POST(req: Request) {
       if (details.errors.length) errors.push(...details.errors);
       const slug = mapEbayCategoryToOurs(details.primaryCategoryName);
       const categoryId = slug ? slugToCategoryId.get(slug) ?? null : null;
-      if (p.categoryId !== categoryId) {
+      const ebayListingType = details.ebayListingType ?? null;
+      const categoryChanged = p.categoryId !== categoryId;
+      const listingTypeChanged = ebayListingType !== (p.ebayListingType ?? null);
+      if (categoryChanged || listingTypeChanged) {
         await prisma.product.update({
           where: { id: p.id },
-          data: { categoryId },
+          data: { categoryId, ebayListingType },
         });
         updated++;
       }
@@ -79,15 +83,17 @@ export async function POST(req: Request) {
   });
 }
 
-async function getProductsToRefresh(missingOnly: boolean, limit: number) {
+async function getProductsToRefresh(missingOnly: boolean, limit: number, skip = 0) {
   const where = { ebayItemId: { not: null } } as { ebayItemId: { not: null }; categoryId?: null };
   if (missingOnly) {
     where.categoryId = null;
   }
   return prisma.product.findMany({
     where,
-    select: { id: true, ebayItemId: true, categoryId: true },
+    select: { id: true, ebayItemId: true, categoryId: true, ebayListingType: true },
     take: limit,
+    skip,
+    orderBy: { id: "asc" },
   });
 }
 
@@ -102,65 +108,94 @@ function streamRefreshResponse(
       const emit = (obj: object) => {
         controller.enqueue(encoder.encode(JSON.stringify(obj) + "\n"));
       };
-      let updated = 0;
-      let failed = 0;
+      let totalUpdated = 0;
+      let totalFailed = 0;
+      let totalProcessed = 0;
       const errors: string[] = [];
 
       try {
-        const products = await getProductsToRefresh(missingOnly, MAX_PER_RUN);
-        emit({
-          type: "log",
-          ts: Date.now(),
-          message: `Found ${products.length} products to refresh (${missingOnly ? "missing category only" : "all with eBay ID"}). Limit ${MAX_PER_RUN} per run.`,
-        });
-        if (products.length === 0) {
-          emit({ type: "result", updated: 0, failed: 0, total: 0, errors: [] });
-          controller.close();
-          return;
-        }
-
         const { prisma } = await import("@/lib/db");
         const categories = await prisma.category.findMany();
         const slugToCategoryId = new Map(categories.map((c) => [c.slug, c.id]));
 
-        for (let i = 0; i < products.length; i++) {
-          const p = products[i];
-          if (!p.ebayItemId) continue;
-          emit({
-            type: "log",
-            ts: Date.now(),
-            message: `[${i + 1}/${products.length}] Fetching category for ${p.ebayItemId}…`,
-          });
-          try {
-            const details = await fetchItemDetails(appId, clientSecret, p.ebayItemId);
-            if (details.errors.length) errors.push(...details.errors);
-            const slug = mapEbayCategoryToOurs(details.primaryCategoryName);
-            const categoryId = slug ? slugToCategoryId.get(slug) ?? null : null;
-            if (p.categoryId !== categoryId) {
-              await prisma.product.update({
-                where: { id: p.id },
-                data: { categoryId },
-              });
-              updated++;
+        const batchSize = missingOnly ? MAX_PER_RUN : BATCH_SIZE_REFETCH_ALL;
+        let batchNumber = 0;
+        let skip = 0;
+
+        while (true) {
+          const products = await getProductsToRefresh(missingOnly, batchSize, skip);
+          if (products.length === 0) {
+            if (batchNumber === 0) {
               emit({
                 type: "log",
                 ts: Date.now(),
-                message: `  → ${slug ?? "no match"} (${categoryId ? "updated" : "cleared"})`,
+                message: `No products to refresh (${missingOnly ? "missing category only" : "all with eBay ID"}).`,
               });
+              emit({ type: "result", updated: 0, failed: 0, total: 0, errors: [] });
             }
-          } catch (e) {
-            failed++;
-            const msg = e instanceof Error ? e.message : String(e);
-            errors.push(msg);
-            emit({ type: "log", ts: Date.now(), message: `  → Error: ${msg}` });
+            break;
           }
-          if (i < products.length - 1) {
-            await new Promise((r) => setTimeout(r, DELAY_MS));
+
+          batchNumber++;
+          emit({
+            type: "log",
+            ts: Date.now(),
+            message: `Batch ${batchNumber}: ${products.length} products (${missingOnly ? "missing category only" : "refetch all"}).`,
+          });
+
+          let batchUpdated = 0;
+          let batchFailed = 0;
+          for (let i = 0; i < products.length; i++) {
+            const p = products[i];
+            if (!p.ebayItemId) continue;
+            emit({
+              type: "log",
+              ts: Date.now(),
+              message: `[${i + 1}/${products.length}] ${p.ebayItemId}…`,
+            });
+            try {
+              const details = await fetchItemDetails(appId, clientSecret, p.ebayItemId);
+              if (details.errors.length) errors.push(...details.errors);
+              const slug = mapEbayCategoryToOurs(details.primaryCategoryName);
+              const categoryId = slug ? slugToCategoryId.get(slug) ?? null : null;
+              const ebayListingType = details.ebayListingType ?? null;
+              const categoryChanged = p.categoryId !== categoryId;
+              const listingTypeChanged = ebayListingType !== (p.ebayListingType ?? null);
+              if (categoryChanged || listingTypeChanged) {
+                await prisma.product.update({
+                  where: { id: p.id },
+                  data: { categoryId, ebayListingType },
+                });
+                batchUpdated++;
+                emit({
+                  type: "log",
+                  ts: Date.now(),
+                  message: `  → ${slug ?? "—"} ${ebayListingType ? `[${ebayListingType}]` : ""}`,
+                });
+              }
+            } catch (e) {
+              batchFailed++;
+              const msg = e instanceof Error ? e.message : String(e);
+              errors.push(msg);
+              emit({ type: "log", ts: Date.now(), message: `  → Error: ${msg}` });
+            }
+            if (i < products.length - 1) {
+              await new Promise((r) => setTimeout(r, DELAY_MS));
+            }
+          }
+
+          totalUpdated += batchUpdated;
+          totalFailed += batchFailed;
+          totalProcessed += products.length;
+          skip += products.length;
+          emit({ type: "log", ts: Date.now(), message: `Batch ${batchNumber} done: ${batchUpdated} updated, ${batchFailed} failed.` });
+
+          if (missingOnly || products.length < batchSize) {
+            emit({ type: "log", ts: Date.now(), message: "Refresh complete." });
+            emit({ type: "result", updated: totalUpdated, failed: totalFailed, total: totalProcessed, errors });
+            break;
           }
         }
-
-        emit({ type: "log", ts: Date.now(), message: "Refresh complete." });
-        emit({ type: "result", updated, failed, total: products.length, errors });
       } catch (err) {
         emit({
           type: "result",

@@ -66,16 +66,24 @@ export default async function ProductPage({
           <div className="mt-6 prose prose-zinc max-w-none text-sm">
             {product.description}
           </div>
-          <div className="mt-8">
+          <div className="mt-8 flex flex-wrap items-center gap-3">
             {product.ebayUrl ? (
-              <a
-                href={product.ebayUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded bg-[#0064d2] px-6 py-3 text-lg font-medium text-white hover:bg-[#0054b2]"
-              >
-                Buy on eBay
-              </a>
+              <>
+                {product.ebayListingType === "AUCTION" && (
+                  <span className="rounded bg-amber-100 px-2 py-1 text-sm font-medium text-amber-800">Auction</span>
+                )}
+                {product.ebayListingType === "FIXED_PRICE" && (
+                  <span className="rounded bg-emerald-100 px-2 py-1 text-sm font-medium text-emerald-800">Buy It Now</span>
+                )}
+                <a
+                  href={product.ebayUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded bg-[#0064d2] px-6 py-3 text-lg font-medium text-white hover:bg-[#0054b2]"
+                >
+                  Buy on eBay
+                </a>
+              </>
             ) : (
               <AddToCartButton
                 productId={product.id}

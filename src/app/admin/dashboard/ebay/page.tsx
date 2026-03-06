@@ -123,6 +123,9 @@ export default function AdminEbayPage() {
   const handleRefreshCategories = () =>
     runStream("/api/admin/ebay/refresh-categories", { stream: true, missingOnly: true });
 
+  const handleRefetchAllFromEbay = () =>
+    runStream("/api/admin/ebay/refresh-categories", { stream: true, missingOnly: false });
+
   const handleFetchImages = () =>
     runStream("/api/admin/ebay/fetch-images", { stream: true });
 
@@ -188,7 +191,15 @@ export default function AdminEbayPage() {
             disabled={syncing}
             className="rounded border border-zinc-400 bg-white px-6 py-2 font-medium text-zinc-800 hover:bg-zinc-100 disabled:opacity-70"
           >
-            {syncing ? "Working…" : "Refresh categories from eBay"}
+            {syncing ? "Working…" : "Refresh categories (missing only)"}
+          </button>
+          <button
+            type="button"
+            onClick={handleRefetchAllFromEbay}
+            disabled={syncing}
+            className="rounded border border-zinc-400 bg-white px-6 py-2 font-medium text-zinc-800 hover:bg-zinc-100 disabled:opacity-70"
+          >
+            {syncing ? "Working…" : "Refetch all from eBay"}
           </button>
           <button
             type="button"
@@ -200,7 +211,7 @@ export default function AdminEbayPage() {
           </button>
         </div>
         <p className="mt-3 text-xs text-zinc-500">
-          <strong>Refresh categories</strong> re-fetches each product&apos;s eBay category (up to 80 per run, 200ms between calls) and updates your site categories. Use &quot;missing only&quot; to fill in products with no category first. Run again to get more. — <strong>Fetch product images</strong> re-downloads the full image list from eBay for each product (up to 40 per run, 2.5s delay between each to avoid rate limits). Progress is shown in the console below. Run multiple times to cover all products over time.
+          <strong>Refresh categories (missing only)</strong> re-fetches category and listing type (Buy It Now vs auction) for up to 80 products that have no category. <strong>Refetch all from eBay</strong> does the same for every product with an eBay ID (in batches of 100) so older items get categories and listing type. <strong>Fetch product images</strong> re-downloads the full image list from eBay (up to 40 per run). Progress is shown in the console below.
         </p>
 
         {(syncing || logs.length > 0) && (

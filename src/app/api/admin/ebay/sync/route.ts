@@ -138,6 +138,7 @@ function streamSyncResponse(
               ebayItemId: itemId,
               ebayUrl: details.viewItemURL,
               ebayEndDate: details.ebayEndDate ? new Date(details.ebayEndDate) : null,
+              ebayListingType: details.ebayListingType ?? null,
             };
             if (existing) {
               await prisma.product.update({ where: { id: existing.id }, data: payload });
@@ -299,6 +300,7 @@ export async function POST(req: Request) {
         ebayItemId: itemId,
         ebayUrl: details.viewItemURL,
         ebayEndDate: details.ebayEndDate ? new Date(details.ebayEndDate) : null,
+        ebayListingType: details.ebayListingType ?? null,
       };
 
       if (existing) {

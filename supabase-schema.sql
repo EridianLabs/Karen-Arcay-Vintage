@@ -28,10 +28,11 @@ CREATE TABLE IF NOT EXISTS "Product" (
   "condition"   TEXT,
   "size"        TEXT,
   "published"   BOOLEAN NOT NULL DEFAULT true,
-  "ebayItemId"   TEXT UNIQUE,
-  "ebayUrl"      TEXT,
-  "ebayEndDate"  TIMESTAMP(3),
-  "createdAt"    TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "ebayItemId"      TEXT UNIQUE,
+  "ebayUrl"         TEXT,
+  "ebayEndDate"     TIMESTAMP(3),
+  "ebayListingType" TEXT,
+  "createdAt"       TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt"    TIMESTAMP(3) NOT NULL,
   CONSTRAINT "Product_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
@@ -99,3 +100,6 @@ INSERT INTO "Category" ("id", "name", "slug") VALUES
   ('cat-mens-shoes', 'Men''s Shoes', 'mens-shoes'),
   ('cat-other', 'Other', 'other')
 ON CONFLICT ("slug") DO NOTHING;
+
+-- If Product table already exists without ebayListingType, run:
+-- ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "ebayListingType" TEXT;
