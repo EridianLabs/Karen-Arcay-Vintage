@@ -29,8 +29,9 @@ async function getCategoriesWithCount() {
     orderBy: { name: "asc" },
     include: { _count: { select: { products: true } } },
   });
+  const excludeSlugs = ["vintage-lingerie", "sindy", "other"];
   return categories
-    .filter((c) => c._count.products > 0)
+    .filter((c) => c._count.products > 0 && !excludeSlugs.includes(c.slug))
     .sort((a, b) => b._count.products - a._count.products)
     .map((c) => ({ name: c.name, slug: c.slug, productCount: c._count.products }));
 }
