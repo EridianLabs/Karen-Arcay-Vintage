@@ -45,12 +45,24 @@ async function getAccessToken(appId: string, clientSecret: string): Promise<stri
   return cachedToken.token;
 }
 
-/** Search keywords used to discover seller listings. One search only returns items matching that keyword, so we run several and merge to get closer to the store’s full count. */
+/** Search keywords used to discover seller listings. One search only returns items matching that keyword, so we run several and merge to get closer to the store’s full count (e.g. 787). */
 const STORE_SEARCH_KEYWORDS = [
   "vintage",
   "retro",
   "antique",
   "(vintage,retro,antique,1970s,1960s,1950s)",
+  "vintage dress",
+  "vintage jacket",
+  "vintage shoes",
+  "vintage clothing",
+  "Sindy",
+  "Laura Ashley",
+  "vintage blouse",
+  "vintage skirt",
+  "vintage coat",
+  "vintage handbag",
+  "1980s",
+  "1990s",
 ];
 
 /**
