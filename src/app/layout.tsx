@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   title: "Karen Arcay Vintage – Vintage Clothing & Accessories | UK",
   description:
     "UK-based vintage clothing, accessories and collectables. Value-priced. 100% positive feedback. Karen Arcay Vintage – karenarcayvintage.com",
+  icons: { icon: "/icon.png" },
 };
 
 export default function RootLayout({

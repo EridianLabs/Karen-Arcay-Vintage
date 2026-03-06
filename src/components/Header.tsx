@@ -2,17 +2,44 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { useState, useEffect, useRef } from "react";
 
 type CategoryItem = { id: string; name: string; slug: string; productCount: number };
 
+function SearchIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <circle cx="11" cy="11" r="7" />
+      <path d="m21 21-4.3-4.3" />
+    </svg>
+  );
+}
+
 export function Header() {
+  const router = useRouter();
   const { totalItems } = useCart();
   const [menuOpen, setMenuOpen] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (searchOpen) searchInputRef.current?.focus();
+  }, [searchOpen]);
 
   useEffect(() => {
     fetch("/api/categories")
@@ -53,12 +80,11 @@ export function Header() {
           />
         </Link>
         <nav className="hidden lg:flex items-center gap-6">
-          <Link
-            href="/shop"
-            className="text-sm font-medium text-zinc-700 hover:text-black"
-          >
-            Shop All
-          </Link>
+          <span className="shop-all-glint">
+            <Link href="/shop" className="shop-all-glint-inner">
+              Shop All
+            </Link>
+          </span>
           <div className="relative" ref={dropdownRef}>
             <button
               type="button"
@@ -92,7 +118,56 @@ export function Header() {
             )}
           </div>
         </nav>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
+          {searchOpen ? (
+            <form
+              className="flex items-center gap-1"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const q = searchQuery.trim();
+                setSearchOpen(false);
+                setSearchQuery("");
+                if (q) router.push(`/shop?q=${encodeURIComponent(q)}`);
+              }}
+            >
+              <input
+                ref={searchInputRef}
+                type="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onBlur={() => {
+                  if (!searchQuery.trim()) setSearchOpen(false);
+                }}
+                placeholder="Search products…"
+                className="w-36 rounded border border-zinc-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-zinc-500 sm:w-48"
+                aria-label="Search products"
+              />
+              <button
+                type="submit"
+                className="rounded p-1.5 text-zinc-600 hover:bg-zinc-100 hover:text-black"
+                aria-label="Search"
+              >
+                <SearchIcon className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => { setSearchOpen(false); setSearchQuery(""); }}
+                className="rounded p-1 text-zinc-400 hover:text-zinc-600"
+                aria-label="Close search"
+              >
+                ✕
+              </button>
+            </form>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
+              className="rounded p-2 text-zinc-600 hover:bg-zinc-100 hover:text-black"
+              aria-label="Search"
+            >
+              <SearchIcon className="h-5 w-5" />
+            </button>
+          )}
           <Link
             href="/cart"
             className="relative p-2 text-zinc-700 hover:text-black"
@@ -116,9 +191,11 @@ export function Header() {
       {menuOpen && (
         <nav className="border-t border-black/10 bg-white lg:hidden">
           <div className="flex flex-col gap-1 px-4 py-3">
-            <Link href="/shop" className="py-2 text-sm font-medium" onClick={() => setMenuOpen(false)}>
-              Shop All
-            </Link>
+            <span className="shop-all-glint w-fit mt-1">
+              <Link href="/shop" className="shop-all-glint-inner" onClick={() => setMenuOpen(false)}>
+                Shop All
+              </Link>
+            </span>
             <div className="pt-1">
               <span className="block py-1 text-xs font-semibold uppercase text-zinc-500">Categories</span>
               {categories.map((c) => (

@@ -39,13 +39,14 @@ async function main() {
     { name: "Film/Music", slug: "film-music" },
     { name: "Bridal/Wedding", slug: "bridal-wedding" },
     { name: "Men's Shoes", slug: "mens-shoes" },
+    { name: "Collectables & Art", slug: "collectables-art" },
     { name: "Other", slug: "other" },
   ];
   await prisma.category.deleteMany({});
   for (const c of categories) {
     await prisma.category.create({ data: c });
   }
-  console.log("Seed done. Admin: username=admin, password=admin123. Categories: 25 eBay store categories.");
+  console.log("Seed done. Admin: username=admin, password=admin123. Categories: 26 eBay store categories.");
 }
 
 main()

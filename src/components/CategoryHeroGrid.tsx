@@ -1,7 +1,18 @@
 import Image from "next/image";
 import Link from "next/link";
 
-/** Category blocks with stock imagery – swap URLs for your own photos when ready. Populated from props (most popular from DB). */
+/** Category slug → homepage image (in public/categories). */
+const CATEGORY_IMAGES: Record<string, string> = {
+  "cosmetics-perfume": "/categories/cosmetics-perfume.png",
+  "vintage-furniture": "/categories/vintage-furniture.png",
+  "shoes-boots": "/categories/shoes-boots.png",
+  "sewing-crafts": "/categories/sewing-crafts.png",
+};
+
+const FALLBACK_IMAGE =
+  "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=600&q=80";
+
+/** Category blocks with imagery – custom images for Cosmetics, Furniture, Shoes, Sewing; placeholder for others. Populated from props (most popular from DB). */
 const FALLBACK_CATEGORIES = [
   {
     label: "WOMEN'S",
@@ -47,14 +58,11 @@ export function CategoryHeroGrid({
       ? categories.slice(0, 8).map((c) => ({
           label: c.name.toUpperCase(),
           href: `/shop?category=${encodeURIComponent(c.slug)}`,
-          image:
-            "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=600&q=80",
+          image: CATEGORY_IMAGES[c.slug] ?? FALLBACK_IMAGE,
         }))
       : FALLBACK_CATEGORIES.map((c) => ({
           ...c,
-          image:
-            c.image ||
-            "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=600&q=80",
+          image: c.image || FALLBACK_IMAGE,
         }));
   return (
     <section className="bg-white py-8">

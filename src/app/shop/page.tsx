@@ -6,7 +6,7 @@ import { CategoryFilter } from "./CategoryFilter";
 
 export const dynamic = "force-dynamic";
 
-type SearchParams = { category?: string; page?: string };
+type SearchParams = { category?: string; page?: string; q?: string };
 
 async function getCategories() {
   return prisma.category.findMany({ orderBy: { name: "asc" } });
@@ -15,11 +15,20 @@ async function getCategories() {
 async function getProducts(searchParams: SearchParams) {
   const page = Number(searchParams.page) || 1;
   const skip = (page - 1) * 48;
-  const where: { published: boolean; category?: { slug: string } } = {
-    published: true,
-  };
+  const where: {
+    published: boolean;
+    category?: { slug: string };
+    OR?: Array<{ title?: { contains: string; mode: "insensitive" }; description?: { contains: string; mode: "insensitive" } }>;
+  } = { published: true };
   if (searchParams.category) {
     where.category = { slug: searchParams.category };
+  }
+  if (searchParams.q?.trim()) {
+    const term = searchParams.q.trim();
+    where.OR = [
+      { title: { contains: term, mode: "insensitive" } },
+      { description: { contains: term, mode: "insensitive" } },
+    ];
   }
   const [products, total] = await Promise.all([
     prisma.product.findMany({
@@ -43,8 +52,8 @@ export async function generateMetadata({
 }: {
   searchParams: Promise<SearchParams>;
 }): Promise<Metadata> {
-  const { category } = await searchParams;
-  const title = category ? `${category}` : "Shop All";
+  const { category, q } = await searchParams;
+  const title = q ? `Search: ${q}` : category ? `${category}` : "Shop All";
   return { title: `${title} – Karen Arcay Vintage` };
 }
 
@@ -63,12 +72,18 @@ export default async function ShopPage({
   const categoryName = params.category
     ? categories.find((c) => c.slug === params.category)?.name ?? params.category
     : null;
+  const searchQ = params.q?.trim() ?? null;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
       <h1 className="mb-2 text-2xl font-bold">
-        {categoryName ? categoryName : "All products"}
+        {searchQ ? `Search results for “${searchQ}”` : categoryName ? categoryName : "All products"}
       </h1>
+      {searchQ && (
+        <p className="mb-4 text-sm text-zinc-600">
+          {total} {total === 1 ? "item" : "items"} found
+        </p>
+      )}
       <Suspense fallback={<div className="mb-6 h-10" />}>
         <CategoryFilter categories={categories} />
       </Suspense>
@@ -83,29 +98,34 @@ export default async function ShopPage({
               <ProductCard key={p.id} product={p} />
             ))}
           </div>
-          {totalPages > 1 && (
-            <div className="mt-8 flex justify-center gap-2">
-              {page > 1 && (
-                <a
-                  href={`/shop?${new URLSearchParams({ ...params, page: String(page - 1) })}`}
-                  className="rounded border border-zinc-300 px-4 py-2 text-sm hover:bg-zinc-100"
-                >
-                  Previous
-                </a>
-              )}
-              <span className="flex items-center px-4 text-sm text-zinc-600">
-                Page {page} of {totalPages}
-              </span>
-              {page < totalPages && (
-                <a
-                  href={`/shop?${new URLSearchParams({ ...params, page: String(page + 1) })}`}
-                  className="rounded border border-zinc-300 px-4 py-2 text-sm hover:bg-zinc-100"
-                >
-                  Next
-                </a>
-              )}
-            </div>
-          )}
+          {totalPages > 1 && (() => {
+            const base: Record<string, string> = {};
+            if (params.category) base.category = params.category;
+            if (params.q) base.q = params.q;
+            return (
+              <div className="mt-8 flex justify-center gap-2">
+                {page > 1 && (
+                  <a
+                    href={`/shop?${new URLSearchParams({ ...base, page: String(page - 1) })}`}
+                    className="rounded border border-zinc-300 px-4 py-2 text-sm hover:bg-zinc-100"
+                  >
+                    Previous
+                  </a>
+                )}
+                <span className="flex items-center px-4 text-sm text-zinc-600">
+                  Page {page} of {totalPages}
+                </span>
+                {page < totalPages && (
+                  <a
+                    href={`/shop?${new URLSearchParams({ ...base, page: String(page + 1) })}`}
+                    className="rounded border border-zinc-300 px-4 py-2 text-sm hover:bg-zinc-100"
+                  >
+                    Next
+                  </a>
+                )}
+              </div>
+            );
+          })()}
         </>
       )}
     </div>

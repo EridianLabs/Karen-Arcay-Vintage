@@ -98,6 +98,7 @@ INSERT INTO "Category" ("id", "name", "slug") VALUES
   ('cat-film-music', 'Film/Music', 'film-music'),
   ('cat-bridal-wedding', 'Bridal/Wedding', 'bridal-wedding'),
   ('cat-mens-shoes', 'Men''s Shoes', 'mens-shoes'),
+  ('cat-collectables-art', 'Collectables & Art', 'collectables-art'),
   ('cat-other', 'Other', 'other')
 ON CONFLICT ("slug") DO NOTHING;
 

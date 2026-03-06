@@ -148,10 +148,11 @@ function streamRefreshResponse(
           for (let i = 0; i < products.length; i++) {
             const p = products[i];
             if (!p.ebayItemId) continue;
+            const displayId = (p.ebayItemId ?? "").replace(/^v1\|(\d+)\|.*/, "$1") || p.ebayItemId;
             emit({
               type: "log",
               ts: Date.now(),
-              message: `[${i + 1}/${products.length}] ${p.ebayItemId}…`,
+              message: `[${i + 1}/${products.length}] ${displayId}…`,
             });
             try {
               const details = await fetchItemDetails(appId, clientSecret, p.ebayItemId);
