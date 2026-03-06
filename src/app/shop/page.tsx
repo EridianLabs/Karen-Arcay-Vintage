@@ -1,22 +1,25 @@
 import { ProductCard } from "@/components/ProductCard";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
+import { Suspense } from "react";
+import { CategoryFilter } from "./CategoryFilter";
 
 export const dynamic = "force-dynamic";
 
-type SearchParams = { category?: string; sale?: string; page?: string };
+type SearchParams = { category?: string; page?: string };
+
+async function getCategories() {
+  return prisma.category.findMany({ orderBy: { name: "asc" } });
+}
 
 async function getProducts(searchParams: SearchParams) {
   const page = Number(searchParams.page) || 1;
   const skip = (page - 1) * 48;
-  const where: { published: boolean; category?: { slug: string }; salePrice?: { not: null } } = {
+  const where: { published: boolean; category?: { slug: string } } = {
     published: true,
   };
   if (searchParams.category) {
     where.category = { slug: searchParams.category };
-  }
-  if (searchParams.sale === "true") {
-    where.salePrice = { not: null };
   }
   const [products, total] = await Promise.all([
     prisma.product.findMany({
@@ -40,8 +43,8 @@ export async function generateMetadata({
 }: {
   searchParams: Promise<SearchParams>;
 }): Promise<Metadata> {
-  const { category, sale } = await searchParams;
-  const title = sale === "true" ? "Sale" : category ? `${category}` : "Shop All";
+  const { category } = await searchParams;
+  const title = category ? `${category}` : "Shop All";
   return { title: `${title} – Karen Arcay Vintage` };
 }
 
@@ -51,15 +54,24 @@ export default async function ShopPage({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
-  const { products, total } = await getProducts(params);
+  const [{ products, total }, categories] = await Promise.all([
+    getProducts(params),
+    getCategories(),
+  ]);
   const page = Number(params.page) || 1;
   const totalPages = Math.ceil(total / 48) || 1;
+  const categoryName = params.category
+    ? categories.find((c) => c.slug === params.category)?.name ?? params.category
+    : null;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-      <h1 className="mb-6 text-2xl font-bold">
-        {params.sale === "true" ? "Sale" : params.category ? `Category: ${params.category}` : "All products"}
+      <h1 className="mb-2 text-2xl font-bold">
+        {categoryName ? categoryName : "All products"}
       </h1>
+      <Suspense fallback={<div className="mb-6 h-10" />}>
+        <CategoryFilter categories={categories} />
+      </Suspense>
       {products.length === 0 ? (
         <p className="py-12 text-center text-zinc-600">
           No products yet. Check back soon!

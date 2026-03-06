@@ -67,11 +67,31 @@ INSERT INTO "AdminUser" ("id", "username", "password")
 VALUES ('seed-admin-1', 'admin', '$2b$12$ttt3TQYgLdcu7iThgxWGjOhFTidIzobMcy6cUOBUC12ZxQBD9FaJS')
 ON CONFLICT ("username") DO NOTHING;
 
+-- eBay store categories (sindypink) – slugs used by sync mapping
 INSERT INTO "Category" ("id", "name", "slug") VALUES
-  ('cat-womens', 'Women''s', 'womens'),
-  ('cat-mens', 'Men''s', 'mens'),
-  ('cat-accessories', 'Accessories', 'accessories'),
+  ('cat-vintage-lingerie', 'Vintage Lingerie', 'vintage-lingerie'),
+  ('cat-shoes-boots', 'Shoes & Boots', 'shoes-boots'),
   ('cat-dresses', 'Dresses', 'dresses'),
-  ('cat-jackets', 'Jackets & Coats', 'jackets-coats'),
-  ('cat-sale', 'Sale', 'sale')
+  ('cat-plus-sizes', 'Plus Sizes - Ladies Wear', 'plus-sizes'),
+  ('cat-handbags', 'Handbags', 'handbags'),
+  ('cat-accessories', 'Accessories', 'accessories'),
+  ('cat-vintage-houseware', 'Vintage Houseware', 'vintage-houseware'),
+  ('cat-vintage-dolls-toys', 'Vintage Dolls & Toys', 'vintage-dolls-toys'),
+  ('cat-sindy', 'Sindy', 'sindy'),
+  ('cat-sewing-crafts', 'Sewing/Crafts', 'sewing-crafts'),
+  ('cat-menswear', 'Menswear', 'menswear'),
+  ('cat-childrens-wear', 'Children''s Wear', 'childrens-wear'),
+  ('cat-vintage-furniture', 'Vintage Furniture', 'vintage-furniture'),
+  ('cat-coats-jackets', 'Coats & Jackets', 'coats-jackets'),
+  ('cat-dolls-houses', 'Dolls'' Houses & Accessories', 'dolls-houses'),
+  ('cat-cosmetics-perfume', 'Cosmetics & Perfume', 'cosmetics-perfume'),
+  ('cat-vintage-millinery', 'Vintage Millinery', 'vintage-millinery'),
+  ('cat-vintage-jewellery', 'Vintage Jewellery', 'vintage-jewellery'),
+  ('cat-vintage-books-magazines', 'Vintage Books & Magazines', 'vintage-books-magazines'),
+  ('cat-separates', 'Separates', 'separates'),
+  ('cat-swimwear-beachwear', 'Swimwear & Beachwear', 'swimwear-beachwear'),
+  ('cat-film-music', 'Film/Music', 'film-music'),
+  ('cat-bridal-wedding', 'Bridal/Wedding', 'bridal-wedding'),
+  ('cat-mens-shoes', 'Men''s Shoes', 'mens-shoes'),
+  ('cat-other', 'Other', 'other')
 ON CONFLICT ("slug") DO NOTHING;

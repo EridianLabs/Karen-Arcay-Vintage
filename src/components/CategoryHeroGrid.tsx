@@ -1,14 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 
-/** Category blocks with stock imagery – swap URLs for your own photos when ready */
-const CATEGORIES = [
-  {
-    label: "SHOP SALE",
-    href: "/shop?sale=true",
-    image:
-      "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=600&q=80",
-  },
+/** Category blocks with stock imagery – swap URLs for your own photos when ready. Populated from props (most popular from DB). */
+const FALLBACK_CATEGORIES = [
   {
     label: "WOMEN'S",
     href: "/shop?category=womens",
@@ -41,7 +35,27 @@ const CATEGORIES = [
   },
 ];
 
-export function CategoryHeroGrid() {
+type CategoryWithCount = { name: string; slug: string; productCount: number };
+
+export function CategoryHeroGrid({
+  categories = [],
+}: {
+  categories?: CategoryWithCount[];
+}) {
+  const list =
+    categories.length > 0
+      ? categories.slice(0, 8).map((c) => ({
+          label: c.name.toUpperCase(),
+          href: `/shop?category=${encodeURIComponent(c.slug)}`,
+          image:
+            "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=600&q=80",
+        }))
+      : FALLBACK_CATEGORIES.map((c) => ({
+          ...c,
+          image:
+            c.image ||
+            "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=600&q=80",
+        }));
   return (
     <section className="bg-white py-8">
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
@@ -49,7 +63,7 @@ export function CategoryHeroGrid() {
           SHOP BY CATEGORY
         </h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:gap-4">
-          {CATEGORIES.map((cat) => (
+          {list.map((cat) => (
             <Link
               key={cat.href}
               href={cat.href}

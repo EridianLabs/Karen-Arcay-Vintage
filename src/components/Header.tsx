@@ -2,21 +2,33 @@
 
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
-const NAV = [
-  { label: "Shop Sale", href: "/shop?sale=true" },
-  { label: "Women's", href: "/shop?category=womens" },
-  { label: "Men's", href: "/shop?category=mens" },
-  { label: "Accessories", href: "/shop?category=accessories" },
-  { label: "Dresses", href: "/shop?category=dresses" },
-  { label: "Jackets & Coats", href: "/shop?category=jackets-coats" },
-];
+type CategoryItem = { id: string; name: string; slug: string; productCount: number };
 
 export function Header() {
   const { totalItems } = useCart();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [cartOpen, setCartOpen] = useState(false);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetch("/api/categories")
+      .then((r) => r.json())
+      .then(setCategories)
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setCategoriesOpen(false);
+      }
+    }
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 border-b border-black/10 bg-white">
@@ -33,15 +45,44 @@ export function Header() {
           Karen Arcay Vintage
         </Link>
         <nav className="hidden lg:flex items-center gap-6">
-          {NAV.map(({ label, href }) => (
-            <Link
-              key={href}
-              href={href}
-              className="text-sm font-medium text-zinc-700 hover:text-black"
+          <Link
+            href="/shop"
+            className="text-sm font-medium text-zinc-700 hover:text-black"
+          >
+            Shop All
+          </Link>
+          <div className="relative" ref={dropdownRef}>
+            <button
+              type="button"
+              onClick={() => setCategoriesOpen((o) => !o)}
+              className="text-sm font-medium text-zinc-700 hover:text-black flex items-center gap-0.5"
+              aria-expanded={categoriesOpen}
+              aria-haspopup="true"
             >
-              {label}
-            </Link>
-          ))}
+              Categories <span className="text-zinc-400">{categoriesOpen ? "▴" : "▾"}</span>
+            </button>
+            {categoriesOpen && (
+              <div className="absolute left-0 top-full mt-1 w-56 rounded border border-zinc-200 bg-white py-1 shadow-lg">
+                {categories.length === 0 ? (
+                  <div className="px-3 py-2 text-sm text-zinc-500">Loading…</div>
+                ) : (
+                  categories.map((c) => (
+                    <Link
+                      key={c.id}
+                      href={`/shop?category=${encodeURIComponent(c.slug)}`}
+                      className="block px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100"
+                      onClick={() => setCategoriesOpen(false)}
+                    >
+                      {c.name}
+                      {c.productCount > 0 && (
+                        <span className="ml-1 text-zinc-400">({c.productCount})</span>
+                      )}
+                    </Link>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
         </nav>
         <div className="flex items-center gap-2">
           <Link
@@ -67,16 +108,22 @@ export function Header() {
       {menuOpen && (
         <nav className="border-t border-black/10 bg-white lg:hidden">
           <div className="flex flex-col gap-1 px-4 py-3">
-            {NAV.map(({ label, href }) => (
-              <Link
-                key={href}
-                href={href}
-                className="py-2 text-sm font-medium"
-                onClick={() => setMenuOpen(false)}
-              >
-                {label}
-              </Link>
-            ))}
+            <Link href="/shop" className="py-2 text-sm font-medium" onClick={() => setMenuOpen(false)}>
+              Shop All
+            </Link>
+            <div className="pt-1">
+              <span className="block py-1 text-xs font-semibold uppercase text-zinc-500">Categories</span>
+              {categories.map((c) => (
+                <Link
+                  key={c.id}
+                  href={`/shop?category=${encodeURIComponent(c.slug)}`}
+                  className="block py-2 pl-2 text-sm"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  {c.name} {c.productCount > 0 && `(${c.productCount})`}
+                </Link>
+              ))}
+            </div>
           </div>
         </nav>
       )}

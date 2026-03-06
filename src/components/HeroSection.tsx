@@ -25,14 +25,8 @@ export function HeroSection() {
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Link
-            href="/shop?sale=true"
-            className="rounded bg-white px-6 py-3 text-sm font-semibold text-zinc-900 hover:bg-zinc-100"
-          >
-            SHOP SALE
-          </Link>
-          <Link
             href="/shop"
-            className="rounded border-2 border-white px-6 py-3 text-sm font-semibold text-white hover:bg-white/10"
+            className="rounded bg-white px-6 py-3 text-sm font-semibold text-zinc-900 hover:bg-zinc-100"
           >
             SHOP ALL
           </Link>

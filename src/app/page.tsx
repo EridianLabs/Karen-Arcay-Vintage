@@ -10,19 +10,6 @@ import { prisma } from "@/lib/db";
 // Avoid prerender at build time so Prisma runs only at request time (Vercel serverless)
 export const dynamic = "force-dynamic";
 
-async function getSaleProducts() {
-  const products = await prisma.product.findMany({
-    where: { published: true, salePrice: { not: null } },
-    orderBy: { createdAt: "desc" },
-    take: 20,
-    include: { category: true },
-  });
-  return products.map((p) => ({
-    ...p,
-    images: JSON.parse(p.images || "[]") as string[],
-  }));
-}
-
 async function getLatestProducts() {
   const products = await prisma.product.findMany({
     where: { published: true },
@@ -36,39 +23,28 @@ async function getLatestProducts() {
   }));
 }
 
+async function getCategoriesWithCount() {
+  const categories = await prisma.category.findMany({
+    orderBy: { name: "asc" },
+    include: { _count: { select: { products: true } } },
+  });
+  return categories
+    .filter((c) => c._count.products > 0)
+    .sort((a, b) => b._count.products - a._count.products)
+    .map((c) => ({ name: c.name, slug: c.slug, productCount: c._count.products }));
+}
+
 export default async function HomePage() {
-  const [saleProducts, latestProducts] = await Promise.all([
-    getSaleProducts(),
+  const [latestProducts, categoriesWithCount] = await Promise.all([
     getLatestProducts(),
+    getCategoriesWithCount(),
   ]);
 
   return (
     <div>
       <HeroSection />
       <TrustBadges />
-      <CategoryHeroGrid />
-
-      {/* Shop under £30 / Sale highlights */}
-      {saleProducts.length > 0 && (
-        <section className="bg-white py-10">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6">
-            <h2 className="mb-6 text-2xl font-bold">SHOP SALE</h2>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-              {saleProducts.slice(0, 20).map((p) => (
-                <ProductCard key={p.id} product={p} />
-              ))}
-            </div>
-            <div className="mt-6 text-center">
-              <Link
-                href="/shop?sale=true"
-                className="inline-block rounded bg-black px-6 py-2 text-sm font-medium text-white hover:bg-zinc-800"
-              >
-                View all sale items
-              </Link>
-            </div>
-          </div>
-        </section>
-      )}
+      <CategoryHeroGrid categories={categoriesWithCount} />
 
       {/* Latest products */}
       <section className="bg-zinc-50 py-10">

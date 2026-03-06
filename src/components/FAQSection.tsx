@@ -21,7 +21,7 @@ const FAQS = [
   },
   {
     q: "How do I find special discounts?",
-    a: "Sign up to our newsletter in the footer for exclusive offers and sale alerts. Sale items are also available under Shop Sale.",
+    a: "Sign up to our newsletter in the footer for exclusive offers and new arrival alerts.",
   },
 ];
 
