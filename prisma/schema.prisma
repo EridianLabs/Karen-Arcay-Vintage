@@ -33,9 +33,10 @@ model Product {
   condition   String?   // e.g. "Excellent", "Good"
   size        String?
   published   Boolean   @default(true)
-  ebayItemId  String?   @unique  // eBay item ID when synced from eBay
-  ebayUrl     String?   // Link to eBay listing – when set, show "Buy on eBay"
-  createdAt   DateTime  @default(now())
+  ebayItemId   String?    @unique  // eBay item ID when synced from eBay
+  ebayUrl      String?    // Link to eBay listing – when set, show "Buy on eBay"
+  ebayEndDate  DateTime?  // Auction/listing end time (Browse API itemEndDate) – for "ending soon"
+  createdAt    DateTime   @default(now())
   updatedAt   DateTime  @updatedAt
   orderItems  OrderItem[]
 }

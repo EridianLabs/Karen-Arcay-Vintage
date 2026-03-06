@@ -28,10 +28,11 @@ CREATE TABLE IF NOT EXISTS "Product" (
   "condition"   TEXT,
   "size"        TEXT,
   "published"   BOOLEAN NOT NULL DEFAULT true,
-  "ebayItemId"  TEXT UNIQUE,
-  "ebayUrl"     TEXT,
-  "createdAt"   TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "updatedAt"   TIMESTAMP(3) NOT NULL,
+  "ebayItemId"   TEXT UNIQUE,
+  "ebayUrl"      TEXT,
+  "ebayEndDate"  TIMESTAMP(3),
+  "createdAt"    TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt"    TIMESTAMP(3) NOT NULL,
   CONSTRAINT "Product_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
@@ -56,8 +57,11 @@ CREATE TABLE IF NOT EXISTS "OrderItem" (
   CONSTRAINT "OrderItem_productId_fkey"  FOREIGN KEY ("productId")  REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
+-- If Product table already exists, add ending-soon column: ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "ebayEndDate" TIMESTAMP(3);
+
 -- Indexes for common lookups (optional but helpful)
 CREATE INDEX IF NOT EXISTS "Product_categoryId_idx" ON "Product"("categoryId");
+CREATE INDEX IF NOT EXISTS "Product_ebayEndDate_idx" ON "Product"("ebayEndDate");
 CREATE INDEX IF NOT EXISTS "Product_ebayItemId_idx" ON "Product"("ebayItemId");
 CREATE INDEX IF NOT EXISTS "OrderItem_orderId_idx" ON "OrderItem"("orderId");
 CREATE INDEX IF NOT EXISTS "OrderItem_productId_idx" ON "OrderItem"("productId");

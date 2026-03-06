@@ -123,6 +123,8 @@ export async function fetchItemDetails(
   condition?: string;
   primaryCategoryName?: string;
   sellerUsername?: string;
+  /** ISO date string when listing/auction ends (Browse API itemEndDate) */
+  ebayEndDate?: string;
   errors: string[];
 }> {
   const errors: string[] = [];
@@ -164,6 +166,8 @@ export async function fetchItemDetails(
     /** Browse API: top-level category path (e.g. "Clothing|Women|Dresses") – use this for mapping */
     categoryPath?: string;
     categoryId?: string;
+    /** When the listing/auction ends (ISO string) – for "ending soon" */
+    itemEndDate?: string;
     primaryItemCategory?: { categoryName?: string };
     seller?: { username?: string };
   };
@@ -196,6 +200,7 @@ export async function fetchItemDetails(
   const primaryCategoryName =
     item?.categoryPath ?? item?.primaryItemCategory?.categoryName ?? "";
   const sellerUsername = item?.seller?.username ?? "";
+  const ebayEndDate = item?.itemEndDate ?? undefined;
 
   return {
     itemId,
@@ -208,6 +213,7 @@ export async function fetchItemDetails(
     condition,
     primaryCategoryName,
     sellerUsername,
+    ebayEndDate,
     errors,
   };
 }
@@ -222,6 +228,7 @@ const ITEM_DETAIL_SHAPE = {
   condition: undefined as string | undefined,
   primaryCategoryName: undefined as string | undefined,
   sellerUsername: undefined as string | undefined,
+  ebayEndDate: undefined as string | undefined,
   errors: [] as string[],
 };
 
@@ -292,6 +299,7 @@ export async function fetchItemDetailsBatch(
       conditionId?: string;
       categoryPath?: string;
       categoryId?: string;
+      itemEndDate?: string;
       primaryItemCategory?: { categoryName?: string };
       seller?: { username?: string };
     }>;
@@ -321,6 +329,7 @@ export async function fetchItemDetailsBatch(
     const primaryCategoryName =
       item?.categoryPath ?? item?.primaryItemCategory?.categoryName ?? "";
     const sellerUsername = item?.seller?.username ?? "";
+    const ebayEndDate = item?.itemEndDate ?? undefined;
 
     out.set(itemId, {
       itemId,
@@ -333,6 +342,7 @@ export async function fetchItemDetailsBatch(
       condition,
       primaryCategoryName,
       sellerUsername,
+      ebayEndDate,
       errors: [],
     });
   }
