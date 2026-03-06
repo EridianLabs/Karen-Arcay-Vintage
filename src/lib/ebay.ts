@@ -221,20 +221,20 @@ const ITEM_DETAIL_SHAPE = {
   errors: [] as string[],
 };
 
-/** Fetch up to 20 items in one request (Browse API getItems). Returns same shape as fetchItemDetails per item. */
+/** Fetch up to 20 items. Tries Browse API getItems (batch); on 403 (Limited Release) falls back to getItem per item. */
 export async function fetchItemDetailsBatch(
   appId: string,
   clientSecret: string,
   itemIds: string[]
 ): Promise<Map<string, Awaited<ReturnType<typeof fetchItemDetails>>>> {
-  const out = new Map<string, Awaited<ReturnType<typeof fetchItemDetails>>>();
   const slice = itemIds.slice(0, 20);
-  if (slice.length === 0) return out;
+  if (slice.length === 0) return new Map();
 
   let token: string;
   try {
     token = await getAccessToken(appId, clientSecret);
   } catch {
+    const out = new Map<string, Awaited<ReturnType<typeof fetchItemDetails>>>();
     for (const id of slice) {
       out.set(id, { ...ITEM_DETAIL_SHAPE, itemId: id, errors: ["Failed to get eBay OAuth token"] });
     }
@@ -250,13 +250,29 @@ export async function fetchItemDetailsBatch(
     },
   });
 
+  if (res.status === 403) {
+    // getItems is Limited Release; most apps get 403. Fall back to one getItem per id.
+    const out = new Map<string, Awaited<ReturnType<typeof fetchItemDetails>>>();
+    for (let i = 0; i < slice.length; i++) {
+      const detail = await fetchItemDetails(appId, clientSecret, slice[i]);
+      out.set(slice[i], detail);
+      if (i < slice.length - 1) {
+        await new Promise((r) => setTimeout(r, 150));
+      }
+    }
+    return out;
+  }
+
   if (!res.ok) {
+    const out = new Map<string, Awaited<ReturnType<typeof fetchItemDetails>>>();
     const err = `Browse API getItems HTTP ${res.status}`;
     for (const id of slice) {
       out.set(id, { ...ITEM_DETAIL_SHAPE, itemId: id, errors: [err] });
     }
     return out;
   }
+
+  const out = new Map<string, Awaited<ReturnType<typeof fetchItemDetails>>>();
 
   const data = (await res.json()) as {
     items?: Array<{
