@@ -180,6 +180,12 @@ function streamRefreshResponse(
                   ts: Date.now(),
                   message: `  → ${slug ?? "—"} ${ebayListingType ? `[${ebayListingType}]` : ""}${debugRaw}`,
                 });
+              } else {
+                emit({
+                  type: "log",
+                  ts: Date.now(),
+                  message: `  → ${slug ? slug : "—"} (no change)`,
+                });
               }
             } catch (e) {
               batchFailed++;

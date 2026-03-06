@@ -237,11 +237,13 @@ export async function fetchStoreItemIds(
   appId: string,
   clientSecret: string,
   sellerUsername: string,
-  onPage?: (offset: number, totalSoFar: number, keyword?: string) => void
+  onPage?: (offset: number, totalSoFar: number, keyword?: string) => void,
+  onKeywordStart?: (keyword: string, index: number, total: number) => void
 ): Promise<{ itemIds: string[]; errors: string[] }> {
   const seen = new Set<string>();
   const itemIds: string[] = [];
   const errors: string[] = [];
+  const totalKeywords = STORE_SEARCH_KEYWORDS.length;
 
   let token: string;
   try {
@@ -250,7 +252,6 @@ export async function fetchStoreItemIds(
     errors.push(e instanceof Error ? e.message : "Failed to get eBay OAuth token");
     return { itemIds, errors };
   }
-
   const headers: Record<string, string> = {
     Authorization: `Bearer ${token}`,
     "X-EBAY-C-MARKETPLACE-ID": EBAY_MARKETPLACE_UK,
@@ -262,8 +263,11 @@ export async function fetchStoreItemIds(
   const sellerFilter = `sellers:{${sellerUsername}}`;
   const expectedSellerLower = sellerUsername.toLowerCase();
 
+  let keywordIndex = 0;
   for (const keyword of STORE_SEARCH_KEYWORDS) {
     if (seen.size >= maxItems) break;
+    keywordIndex++;
+    onKeywordStart?.(keyword, keywordIndex, totalKeywords);
     let offset = 0;
     for (;;) {
       if (seen.size >= maxItems) break;

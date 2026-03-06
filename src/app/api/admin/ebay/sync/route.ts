@@ -36,7 +36,7 @@ function streamSyncResponse(
       const result: EbaySyncResult = { created: 0, updated: 0, failed: 0, totalFetched: 0, errors: [] };
       try {
         emit({ type: "log", ts: Date.now(), message: "Starting sync…" });
-        emit({ type: "log", ts: Date.now(), message: "Fetching item IDs from eBay (search + seller filter, 200 per page)…" });
+        emit({ type: "log", ts: Date.now(), message: "Getting OAuth token, then fetching item IDs from eBay (many keyword searches, 200 per page)…" });
         const { itemIds: allItemIds, errors: idErrors } = await fetchStoreItemIds(
           appId,
           clientSecret,
@@ -47,6 +47,16 @@ function streamSyncResponse(
               type: "log",
               ts: Date.now(),
               message: `  Search${q} page (offset ${offset}): ${totalSoFar} item IDs so far`,
+            });
+          },
+          (keyword, index, total) => {
+            if (index === 1) {
+              emit({ type: "log", ts: Date.now(), message: "OAuth token received. First search may take 20–60 seconds…" });
+            }
+            emit({
+              type: "log",
+              ts: Date.now(),
+              message: `Keyword ${index}/${total}: "${keyword.slice(0, 40)}${keyword.length > 40 ? "…" : ""}"…`,
             });
           }
         );

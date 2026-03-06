@@ -126,6 +126,9 @@ export default function AdminEbayPage() {
   const handleRefetchAllFromEbay = () =>
     runStream("/api/admin/ebay/refresh-categories", { stream: true, missingOnly: false });
 
+  const handleAssignCategoriesFromTitles = () =>
+    runStream("/api/admin/ebay/assign-categories-from-titles", { stream: true });
+
   const handleFetchImages = () =>
     runStream("/api/admin/ebay/fetch-images", { stream: true });
 
@@ -203,6 +206,14 @@ export default function AdminEbayPage() {
           </button>
           <button
             type="button"
+            onClick={handleAssignCategoriesFromTitles}
+            disabled={syncing}
+            className="rounded border border-amber-300 bg-amber-50 px-6 py-2 font-medium text-amber-900 hover:bg-amber-100 disabled:opacity-70"
+          >
+            {syncing ? "Working…" : "Assign categories from titles"}
+          </button>
+          <button
+            type="button"
             onClick={handleFetchImages}
             disabled={syncing}
             className="rounded border border-zinc-400 bg-white px-6 py-2 font-medium text-zinc-800 hover:bg-zinc-100 disabled:opacity-70"
@@ -211,7 +222,7 @@ export default function AdminEbayPage() {
           </button>
         </div>
         <p className="mt-3 text-xs text-zinc-500">
-          <strong>Refresh categories (missing only)</strong> re-fetches category and listing type (Buy It Now vs auction) for up to 80 products that have no category. <strong>Refetch all from eBay</strong> does the same for every product with an eBay ID (in batches of 100) so older items get categories and listing type. <strong>Fetch product images</strong> re-downloads the full image list from eBay (up to 40 per run). Progress is shown in the console below.
+          <strong>Assign categories from titles</strong> fills in the Category column for products that have none by matching keywords in the product title (and description) — use this when eBay isn’t returning categories. <strong>Refresh categories</strong> / <strong>Refetch all from eBay</strong> get category from the eBay API when it’s available. <strong>Fetch product images</strong> re-downloads the full image list from eBay. Progress is shown in the console below.
         </p>
 
         {(syncing || logs.length > 0) && (

@@ -35,3 +35,33 @@ export function mapEbayCategoryToOurs(ebayCategoryName: string | undefined): str
   if (n.includes("other")) return "other";
   return "other";
 }
+
+/** Infer category slug from product title (and optional description) when eBay category is missing. */
+export function mapTitleToCategorySlug(title: string, description?: string): string | null {
+  const text = `${title || ""} ${description || ""}`.toLowerCase();
+  if (!text.trim()) return null;
+  const n = text;
+  if (n.includes("sindy") || n.includes("barbie") || n.includes("pippa doll") || n.includes("pedigree sindy") || n.includes("palitoy pippa") || (n.includes("pedigree") && (n.includes("doll") || n.includes("9p") || n.includes("outfit")))) return "sindy";
+  if ((n.includes("dolls") || n.includes("doll's") || n.includes("doll’s")) && (n.includes("house") || n.includes("miniature") || n.includes("lundby") || n.includes("wallpaper") || n.includes("chair") && n.includes("easel"))) return "dolls-houses";
+  if (n.includes("typewriter") || n.includes("olivetti") || n.includes("royal typewriter") || n.includes("mannequin") || n.includes("sewing machine") || n.includes("willcox") || n.includes("gibbs") || n.includes("singer ") || n.includes("pfaff")) return "vintage-houseware";
+  if (n.includes("lingerie") || n.includes("nightdress") || n.includes("negligee") || n.includes("housecoat") || n.includes("slip") || n.includes("petticoat") || n.includes("suspender belt") || n.includes("bra ") || n.includes("stockings") || n.includes("camisole")) return "vintage-lingerie";
+  if (n.includes("perfume") || n.includes("avon") || n.includes("estee lauder") || n.includes("estée lauder") || n.includes("yardley") || n.includes("cosmetic") || n.includes("lipstick") || n.includes("sachet") || n.includes("soap") || n.includes("talc") || n.includes("lavender") || n.includes("eau de") || n.includes("roger") && n.includes("gallet") || n.includes("camay")) return "cosmetics-perfume";
+  if (n.includes("scout") || n.includes("guide ") || n.includes("woggle") || n.includes("association") && n.includes("badge")) return "collectables-art";
+  if (n.includes("sewing") || n.includes("fabric") || n.includes("pattern ") || n.includes("vogue pattern") || n.includes("simplicity") || n.includes("trimming") || n.includes("lace making") || n.includes("barkcloth curtain")) return "sewing-crafts";
+  if (n.includes("furniture") || n.includes("chair") || n.includes("table") || n.includes("wardrobe") || n.includes("cabinet") || n.includes("rocking horse") || n.includes("dressing table") || n.includes("g plan") || n.includes("ercol") || n.includes("lloyd loom") || n.includes("cocktail showcase")) return "vintage-furniture";
+  if (n.includes("cassette") || n.includes("vinyl") || n.includes("record ") || n.includes("single") && n.includes("7")) return "film-music";
+  if (n.includes("catalogue") || n.includes("book") || n.includes("magazine")) return "vintage-books-magazines";
+  if (n.includes("wedding") || n.includes("bridal") || n.includes("bride")) return "bridal-wedding";
+  if (n.includes("swimwear") || n.includes("swimming") || n.includes("bikini") || n.includes("swimsuit") || n.includes("swimming costume")) return "swimwear-beachwear";
+  if ((n.includes("men's") || n.includes("mens ")) && n.includes("shoes")) return "mens-shoes";
+  if (n.includes("jodhpur") || (n.includes("men") && (n.includes("shirt") || n.includes("jacket") || n.includes("tie")))) return "menswear";
+  if (n.includes("shoes") || n.includes("boots") || n.includes("sandals") || n.includes("slipper") || n.includes("pumps") || n.includes("mules") || n.includes("heels") || n.includes("court shoe") || n.includes("espadrille") || n.includes("loafer") || n.includes("brogue") || n.includes("trainer")) return "shoes-boots";
+  if (n.includes("handbag") || n.includes("hand bag") || n.includes("clutch") || n.includes("shoulder bag") || n.includes("purse ") || n.includes("top handle bag")) return "handbags";
+  if (n.includes("hat") || n.includes("millinery") || n.includes("cloche") || n.includes("beret") || n.includes("bonnet") || n.includes("feather hat") || n.includes("felt hat") || n.includes("velvet hat")) return "vintage-millinery";
+  if (n.includes("necklace") || n.includes("brooch") || n.includes("jewellery") || n.includes("jewelry") || n.includes("cufflink") || n.includes("statement jewellery")) return "vintage-jewellery";
+  if (n.includes("coat") || n.includes("jacket") || n.includes("blazer") || n.includes("waistcoat") || n.includes("cardigan")) return "coats-jackets";
+  if (n.includes("dress")) return "dresses";
+  if (n.includes("skirt") || n.includes("blouse") || n.includes("shirt") || n.includes("tunic") || n.includes("jumper") || n.includes("top ") || n.includes("seasalt") || n.includes("jaeger") || n.includes("trousers") || n.includes("playsuit") || n.includes("jumpsuit") || n.includes("pinafore") || n.includes("overall") || n.includes("culotte")) return "separates";
+  if (n.includes("scarf") || n.includes("belt") || n.includes("tie ") || n.includes("cravat") || n.includes("stole") || n.includes("wrap") || n.includes("shawl") || n.includes("gloves") || n.includes("kipper tie")) return "accessories";
+  return "other";
+}
