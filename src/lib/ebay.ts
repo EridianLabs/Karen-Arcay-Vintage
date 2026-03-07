@@ -228,6 +228,9 @@ const STORE_SEARCH_KEYWORDS = [
   "Laura Ashley coat",
 ];
 
+/** Max keywords per sync so the ID phase fits within serverless timeout (~5 min). Each keyword = 1+ eBay request. */
+const MAX_KEYWORDS_FOR_SYNC = 70;
+
 /**
  * Fetch all active listing item IDs for a seller using keyword search + seller filter.
  * Runs multiple keyword searches and merges results so we don’t miss items that don’t match “vintage” (e.g. store shows 787 but one search only returns ~414).
@@ -244,7 +247,8 @@ export async function fetchStoreItemIds(
   const seen = new Set<string>();
   const itemIds: string[] = [];
   const errors: string[] = [];
-  const totalKeywords = STORE_SEARCH_KEYWORDS.length;
+  const keywords = STORE_SEARCH_KEYWORDS.slice(0, MAX_KEYWORDS_FOR_SYNC);
+  const totalKeywords = keywords.length;
 
   let token: string;
   try {
@@ -265,7 +269,7 @@ export async function fetchStoreItemIds(
   const expectedSellerLower = sellerUsername.toLowerCase();
 
   let keywordIndex = 0;
-  for (const keyword of STORE_SEARCH_KEYWORDS) {
+  for (const keyword of keywords) {
     if (seen.size >= maxItems) break;
     keywordIndex++;
     onKeywordStart?.(keyword, keywordIndex, totalKeywords);

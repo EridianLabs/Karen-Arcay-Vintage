@@ -36,7 +36,7 @@ function streamSyncResponse(
       const result: EbaySyncResult = { created: 0, updated: 0, failed: 0, totalFetched: 0, errors: [] };
       try {
         emit({ type: "log", ts: Date.now(), message: "Starting sync…" });
-        emit({ type: "log", ts: Date.now(), message: "Getting OAuth token, then fetching item IDs from eBay (many keyword searches, 200 per page)…" });
+        emit({ type: "log", ts: Date.now(), message: "Getting OAuth token, then fetching item IDs from eBay (first 70 keyword searches to stay within time limit, 200 per page)…" });
         const { itemIds: allItemIds, errors: idErrors } = await fetchStoreItemIds(
           appId,
           clientSecret,
@@ -94,6 +94,11 @@ function streamSyncResponse(
         }
 
         if (itemIds.length === 0) {
+          emit({
+            type: "log",
+            ts: Date.now(),
+            message: "All listed items are already on the site. No new products to sync.",
+          });
           emit({ type: "result", ...result });
           controller.close();
           return;

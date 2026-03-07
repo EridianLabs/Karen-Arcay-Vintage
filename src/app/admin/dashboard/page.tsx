@@ -34,13 +34,20 @@ export default async function AdminDashboardPage() {
           <p className="mt-1 text-zinc-600">Orders</p>
         </div>
       </div>
-      <div className="mt-8">
+      <div className="mt-8 flex flex-wrap items-center gap-4">
         <Link
           href="/admin/dashboard/products/new"
           className="inline-block rounded bg-black px-6 py-2 font-medium text-white hover:bg-zinc-800"
         >
           Add new product
         </Link>
+        <p className="text-sm text-zinc-600">
+          To get the last listings from eBay, go to{" "}
+          <Link href="/admin/dashboard/ebay" className="text-blue-600 hover:underline">
+            eBay sync
+          </Link>{" "}
+          and click &ldquo;Sync from eBay&rdquo; — repeat until the console shows <strong>0 new</strong>.
+        </p>
       </div>
     </div>
   );

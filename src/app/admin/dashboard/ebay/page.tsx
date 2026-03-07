@@ -129,6 +129,9 @@ export default function AdminEbayPage() {
   const handleAssignCategoriesFromTitles = () =>
     runStream("/api/admin/ebay/assign-categories-from-titles", { stream: true });
 
+  const handleAssignCategoriesWithAi = () =>
+    runStream("/api/admin/ebay/assign-categories-ai", { stream: true, onlyMissing: false });
+
   const handleFetchImages = () =>
     runStream("/api/admin/ebay/fetch-images", { stream: true });
 
@@ -173,11 +176,12 @@ export default function AdminEbayPage() {
 
       <div className="mt-8 rounded-lg border border-zinc-200 bg-white p-6">
         <h2 className="font-semibold">Sync now</h2>
-        <p className="mt-2 text-sm text-zinc-600">
+        <div className="mt-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">
+          <strong>How to get all products from eBay:</strong> Click &ldquo;Sync from eBay&rdquo; and wait for it to finish. If it adds new products, click again. Keep repeating until the console says &ldquo;All listed items are already on the site. No new products to sync&rdquo; or shows <strong>0 new</strong>. Each run brings in up to 200 new items.
+        </div>
+        <p className="mt-3 text-sm text-zinc-600">
           Fetches current listings from the eBay store and creates or updates
           products. Each run syncs up to 200 items that aren&apos;t on the site yet.
-          If she has more listings (e.g. 400+), click &ldquo;Sync from eBay&rdquo; again
-          to import the next batch — repeat until the console shows &ldquo;0 new&rdquo;.
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
           <button
@@ -214,6 +218,14 @@ export default function AdminEbayPage() {
           </button>
           <button
             type="button"
+            onClick={handleAssignCategoriesWithAi}
+            disabled={syncing}
+            className="rounded border border-violet-300 bg-violet-50 px-6 py-2 font-medium text-violet-900 hover:bg-violet-100 disabled:opacity-70"
+          >
+            {syncing ? "Working…" : "Assign categories with AI"}
+          </button>
+          <button
+            type="button"
             onClick={handleFetchImages}
             disabled={syncing}
             className="rounded border border-zinc-400 bg-white px-6 py-2 font-medium text-zinc-800 hover:bg-zinc-100 disabled:opacity-70"
@@ -222,7 +234,7 @@ export default function AdminEbayPage() {
           </button>
         </div>
         <p className="mt-3 text-xs text-zinc-500">
-          <strong>Assign categories from titles</strong> fills in the Category column for products that have none by matching keywords in the product title (and description) — use this when eBay isn’t returning categories. <strong>Refresh categories</strong> / <strong>Refetch all from eBay</strong> get category from the eBay API when it’s available. <strong>Fetch product images</strong> re-downloads the full image list from eBay. Progress is shown in the console below.
+          <strong>Assign categories with AI</strong> uses OpenAI to choose the best category from each product&apos;s title and description (most accurate; add <code className="bg-zinc-100 px-1">OPENAI_API_KEY</code> to .env). <strong>Assign categories from titles</strong> uses keyword rules for products with no category in the product title (and description) — use this when eBay isn’t returning categories. <strong>Refresh categories</strong> / <strong>Refetch all from eBay</strong> get category from the eBay API when it’s available. <strong>Fetch product images</strong> re-downloads the full image list from eBay. Progress is shown in the console below.
         </p>
 
         {(syncing || logs.length > 0) && (
@@ -246,6 +258,9 @@ export default function AdminEbayPage() {
                 <div className="text-zinc-500">Connecting…</div>
               )}
             </div>
+            <p className="mt-2 text-xs text-zinc-500">
+              Sync uses the first 70 search keywords per run so it finishes within the server limit. You should see &ldquo;Item ID fetch done&rdquo; then batch progress; if the log stops after the keyword list, the run hit the time limit.
+            </p>
           </div>
         )}
       </div>

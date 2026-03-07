@@ -41,6 +41,8 @@ async function main() {
     { name: "Men's Shoes", slug: "mens-shoes" },
     { name: "Collectables & Art", slug: "collectables-art" },
     { name: "Other", slug: "other" },
+    { name: "Women's", slug: "womens" },
+    { name: "Men's", slug: "mens" },
   ];
   await prisma.category.deleteMany({});
   for (const c of categories) {

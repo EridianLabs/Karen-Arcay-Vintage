@@ -8,6 +8,18 @@ import { useState, useEffect, useRef } from "react";
 
 type CategoryItem = { id: string; name: string; slug: string; productCount: number };
 
+/** Order for nav: All categories first, then Film/Music, Furniture, Women's, Men's, then rest alphabetically. */
+function orderCategoriesForNav(categories: CategoryItem[]): (CategoryItem & { isAll?: boolean })[] {
+  const topSlugs = ["film-music", "vintage-furniture", "womens", "mens"];
+  const bySlug = new Map(categories.map((c) => [c.slug, c]));
+  const top: (CategoryItem & { isAll?: boolean })[] = [
+    { id: "__all__", name: "All categories", slug: "", productCount: 0, isAll: true },
+    ...topSlugs.map((slug) => bySlug.get(slug)).filter(Boolean) as CategoryItem[],
+  ];
+  const rest = categories.filter((c) => !topSlugs.includes(c.slug)).sort((a, b) => a.name.localeCompare(b.name));
+  return [...top, ...rest];
+}
+
 function SearchIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -100,15 +112,15 @@ export function Header() {
                 {categories.length === 0 ? (
                   <div className="px-3 py-2 text-sm text-zinc-500">Loading…</div>
                 ) : (
-                  categories.map((c) => (
+                  orderCategoriesForNav(categories).map((c) => (
                     <Link
                       key={c.id}
-                      href={`/shop?category=${encodeURIComponent(c.slug)}`}
+                      href={c.slug === "" ? "/shop" : `/shop?category=${encodeURIComponent(c.slug)}`}
                       className="block px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100"
                       onClick={() => setCategoriesOpen(false)}
                     >
                       {c.name}
-                      {c.productCount > 0 && (
+                      {c.productCount > 0 && c.slug !== "" && (
                         <span className="ml-1 text-zinc-400">({c.productCount})</span>
                       )}
                     </Link>
@@ -198,14 +210,14 @@ export function Header() {
             </span>
             <div className="pt-1">
               <span className="block py-1 text-xs font-semibold uppercase text-zinc-500">Categories</span>
-              {categories.map((c) => (
+              {orderCategoriesForNav(categories).map((c) => (
                 <Link
                   key={c.id}
-                  href={`/shop?category=${encodeURIComponent(c.slug)}`}
+                  href={c.slug === "" ? "/shop" : `/shop?category=${encodeURIComponent(c.slug)}`}
                   className="block py-2 pl-2 text-sm"
                   onClick={() => setMenuOpen(false)}
                 >
-                  {c.name} {c.productCount > 0 && `(${c.productCount})`}
+                  {c.name} {c.productCount > 0 && c.slug !== "" && `(${c.productCount})`}
                 </Link>
               ))}
             </div>

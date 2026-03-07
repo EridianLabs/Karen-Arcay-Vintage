@@ -46,7 +46,11 @@ export default async function AdminProductsPage() {
                   <tr key={p.id}>
                     <td className="border border-zinc-200 p-2">
                       {images[0] ? (
-                        <div className="relative h-12 w-12">
+                        <Link
+                          href={`/product/${p.id}`}
+                          className="block relative h-12 w-12 rounded overflow-hidden ring-1 ring-zinc-200 hover:ring-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-600"
+                          title={`View ${p.title}`}
+                        >
                           <Image
                             src={images[0].startsWith("http") ? images[0] : images[0]}
                             alt=""
@@ -54,7 +58,7 @@ export default async function AdminProductsPage() {
                             className="object-cover"
                             sizes="48px"
                           />
-                        </div>
+                        </Link>
                       ) : (
                         <span className="text-zinc-400 text-xs">—</span>
                       )}
