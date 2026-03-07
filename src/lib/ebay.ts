@@ -238,7 +238,8 @@ export async function fetchStoreItemIds(
   clientSecret: string,
   sellerUsername: string,
   onPage?: (offset: number, totalSoFar: number, keyword?: string) => void,
-  onKeywordStart?: (keyword: string, index: number, total: number) => void
+  onKeywordStart?: (keyword: string, index: number, total: number) => void,
+  onPageStart?: (offset: number, keyword: string) => void
 ): Promise<{ itemIds: string[]; errors: string[] }> {
   const seen = new Set<string>();
   const itemIds: string[] = [];
@@ -277,6 +278,7 @@ export async function fetchStoreItemIds(
       url.searchParams.set("limit", String(limit));
       url.searchParams.set("offset", String(offset));
 
+      onPageStart?.(offset, keyword);
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), requestTimeoutMs);
       let res: Response;

@@ -34,7 +34,7 @@ export default async function AdminProductsPage() {
                 <th className="border border-zinc-200 p-2 text-left text-sm font-medium">Title</th>
                 <th className="border border-zinc-200 p-2 text-left text-sm font-medium">Category</th>
                 <th className="border border-zinc-200 p-2 text-left text-sm font-medium">Price</th>
-                <th className="border border-zinc-200 p-2 text-left text-sm font-medium">Sale</th>
+                <th className="border border-zinc-200 p-2 text-left text-sm font-medium">Listing</th>
                 <th className="border border-zinc-200 p-2 text-left text-sm font-medium">Status</th>
                 <th className="border border-zinc-200 p-2 text-left text-sm font-medium">Actions</th>
               </tr>
@@ -63,7 +63,11 @@ export default async function AdminProductsPage() {
                     <td className="border border-zinc-200 p-2 text-sm">{p.category?.name ?? "—"}</td>
                     <td className="border border-zinc-200 p-2 text-sm">£{p.price.toFixed(2)}</td>
                     <td className="border border-zinc-200 p-2 text-sm">
-                      {p.salePrice != null ? `£${p.salePrice.toFixed(2)}` : "—"}
+                      {p.ebayListingType === "AUCTION"
+                        ? "Auction"
+                        : p.ebayListingType === "FIXED_PRICE"
+                          ? "Buy now"
+                          : "—"}
                     </td>
                     <td className="border border-zinc-200 p-2 text-sm">
                       {p.published ? "Published" : "Draft"}

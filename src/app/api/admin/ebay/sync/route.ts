@@ -58,6 +58,13 @@ function streamSyncResponse(
               ts: Date.now(),
               message: `Keyword ${index}/${total}: "${keyword.slice(0, 40)}${keyword.length > 40 ? "…" : ""}"…`,
             });
+          },
+          (offset, keyword) => {
+            emit({
+              type: "log",
+              ts: Date.now(),
+              message: `  Fetching page at offset ${offset} (${keyword.length > 30 ? keyword.slice(0, 30) + "…" : keyword})…`,
+            });
           }
         );
         result.errors.push(...idErrors);
