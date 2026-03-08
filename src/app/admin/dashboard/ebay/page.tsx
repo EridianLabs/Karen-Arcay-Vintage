@@ -234,7 +234,7 @@ export default function AdminEbayPage() {
           </button>
         </div>
         <p className="mt-3 text-xs text-zinc-500">
-          <strong>Assign categories with AI</strong> uses OpenAI to choose the best category from each product&apos;s title and description (most accurate; add <code className="bg-zinc-100 px-1">OPENAI_API_KEY</code> to .env). <strong>Assign categories from titles</strong> uses keyword rules for products with no category in the product title (and description) — use this when eBay isn’t returning categories. <strong>Refresh categories</strong> / <strong>Refetch all from eBay</strong> get category from the eBay API when it’s available. <strong>Fetch product images</strong> re-downloads the full image list from eBay. Progress is shown in the console below.
+          <strong>Assign categories with AI</strong> uses OpenAI (add <code className="bg-zinc-100 px-1">OPENAI_API_KEY</code> in Vercel → Settings → Environment Variables, then <strong>redeploy</strong> so the key is available). <strong>Assign categories from titles</strong> uses keyword rules for products with no category in the product title (and description) — use this when eBay isn’t returning categories. <strong>Refresh categories</strong> / <strong>Refetch all from eBay</strong> get category from the eBay API when it’s available. <strong>Fetch product images</strong> re-downloads the full image list from eBay. Progress is shown in the console below.
         </p>
 
         {(syncing || logs.length > 0) && (

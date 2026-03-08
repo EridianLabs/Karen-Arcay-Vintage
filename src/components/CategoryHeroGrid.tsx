@@ -55,7 +55,7 @@ export function CategoryHeroGrid({
 }) {
   const list =
     categories.length > 0
-      ? categories.slice(0, 8).map((c) => ({
+      ? categories.slice(0, 6).map((c) => ({
           label: c.name.toUpperCase(),
           href: `/shop?category=${encodeURIComponent(c.slug)}`,
           image: CATEGORY_IMAGES[c.slug] ?? FALLBACK_IMAGE,

@@ -29,10 +29,11 @@ async function getCategoriesWithCount() {
     orderBy: { name: "asc" },
     include: { _count: { select: { products: true } } },
   });
-  const excludeSlugs = ["vintage-lingerie", "sindy", "other"];
+  const excludeSlugs = ["vintage-lingerie", "sindy", "other", "separates", "vintage-millinery"];
   return categories
     .filter((c) => c._count.products > 0 && !excludeSlugs.includes(c.slug))
     .sort((a, b) => b._count.products - a._count.products)
+    .slice(0, 6)
     .map((c) => ({ name: c.name, slug: c.slug, productCount: c._count.products }));
 }
 

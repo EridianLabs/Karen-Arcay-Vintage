@@ -16,7 +16,10 @@ export async function POST(req: Request) {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) {
     return NextResponse.json(
-      { error: "OPENAI_API_KEY is not set. Add it to your environment to use AI categorisation." },
+      {
+        error:
+          "OPENAI_API_KEY is not set. In Vercel: Project → Settings → Environment Variables → add OPENAI_API_KEY, then redeploy (Deployments → … → Redeploy). New env vars only apply after a redeploy.",
+      },
       { status: 400 }
     );
   }

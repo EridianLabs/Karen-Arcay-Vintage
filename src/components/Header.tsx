@@ -3,7 +3,6 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useCart } from "@/context/CartContext";
 import { useState, useEffect, useRef } from "react";
 
 type CategoryItem = { id: string; name: string; slug: string; productCount: number };
@@ -40,7 +39,6 @@ function SearchIcon({ className }: { className?: string }) {
 
 export function Header() {
   const router = useRouter();
-  const { totalItems } = useCart();
   const [menuOpen, setMenuOpen] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -180,18 +178,6 @@ export function Header() {
               <SearchIcon className="h-5 w-5" />
             </button>
           )}
-          <Link
-            href="/cart"
-            className="relative p-2 text-zinc-700 hover:text-black"
-            aria-label={`Cart, ${totalItems} items`}
-          >
-            <span className="text-lg">🛒</span>
-            {totalItems > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-black text-[10px] font-medium text-white">
-                {totalItems > 99 ? "99+" : totalItems}
-              </span>
-            )}
-          </Link>
           <Link
             href="/admin"
             className="hidden sm:block text-sm text-zinc-500 hover:text-zinc-700"
